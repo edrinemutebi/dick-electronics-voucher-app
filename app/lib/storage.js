@@ -59,7 +59,7 @@ function cleanupOldPayments() {
   }
 }
 
-module.exports = {
+export {
   storePendingPayment,
   updatePaymentStatus,
   getPayment,

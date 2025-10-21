@@ -225,18 +225,15 @@ export async function POST(request) {
 
       console.log("Making request to Marz API...");
       console.log("Request URL:", `${process.env.MARZ_API_BASE_URL}/collect-money`);
-      console.log("Request headers:", {
-        Authorization: `Basic ${process.env.MARZ_API_KEY}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      });
       console.log("Request data:", Object.fromEntries(formData));
+      console.log("Callback URL:", `${process.env.NEXT_PUBLIC_APP_URL || 'https://dick-electronics-voucher-app.vercel.app'}/api/webhook`);
       
       const response = await axios.post(
         `${process.env.MARZ_API_BASE_URL}/collect-money`,
         formData,
         {
           headers: {
-            Authorization: `Basic ${process.env.MARZ_API_KEY}`,
+            Authorization: `Basic ${process.env.MARZ_BASE64_AUTH || process.env.MARZ_API_KEY}`,
             "Content-Type": "application/x-www-form-urlencoded",
           },
         }

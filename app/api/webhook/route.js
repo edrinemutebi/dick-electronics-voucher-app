@@ -92,10 +92,15 @@ export async function POST(request) {
 }
 
 export async function GET() {
+  console.log("=== WEBHOOK GET REQUEST (TEST) ===");
+  console.log("Timestamp:", new Date().toISOString());
+  
   return Response.json({
     message: "Webhook endpoint is working",
     timestamp: new Date().toISOString(),
-    status: "healthy"
+    status: "healthy",
+    endpoint: "https://dick-electronics-voucher-app.vercel.app/api/webhook",
+    events_supported: ["collection.completed", "collection.failed"]
   });
 }
 

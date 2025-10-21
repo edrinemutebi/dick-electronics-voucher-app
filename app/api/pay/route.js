@@ -89,7 +89,7 @@ export async function POST(request) {
       formData.append("country", "UG");
       formData.append("reference", reference);
       formData.append("description", `Voucher payment ${amount}`);
-      formData.append("callback_url", `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/webhook`);
+      formData.append("callback_url", `${process.env.NEXT_PUBLIC_APP_URL || 'https://dick-electronics-voucher-app.vercel.app'}/api/webhook`);
 
       // For development/testing, simulate a successful response if Marz API is not configured
       if (!process.env.MARZ_API_BASE_URL || !process.env.MARZ_API_KEY) {

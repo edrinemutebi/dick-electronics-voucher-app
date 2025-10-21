@@ -1,70 +1,59 @@
-// Simple webhook handler without external dependencies
-function generateVoucher(amount) {
-  const prefixMap = { 600: "V600", 1000: "V1000", 1500: "V1500", 7000: "V7000" };
-  const prefix = prefixMap[amount] || "VXXXX";
-  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `${prefix}-${rand}`;
-}
-
 export async function POST(request) {
+  // Always return a JSON response, no matter what
   try {
-    console.log("Webhook received at:", new Date().toISOString());
+    console.log("=== WEBHOOK RECEIVED ===");
+    console.log("Timestamp:", new Date().toISOString());
     
-    const payload = await request.json();
-    
-    console.log("Marz Pay webhook received:", {
-      event_type: payload.event_type,
-      transaction_reference: payload.transaction?.reference,
-      transaction_status: payload.transaction?.status,
-      timestamp: new Date().toISOString()
-    });
-
-    // Extract reference from the transaction object
-    const reference = payload.transaction?.reference;
-    const eventType = payload.event_type;
-    const transactionStatus = payload.transaction?.status;
-
-    // Simple response for now - just acknowledge receipt
-    let responseMessage = "Webhook received successfully";
-    
-    if (eventType === "collection.completed" || transactionStatus === "completed") {
-      console.log(`Payment completed for reference: ${reference}`);
-      responseMessage = "Payment completed - voucher will be generated";
-    } else if (eventType === "collection.failed" || transactionStatus === "failed") {
-      console.log(`Payment failed for reference: ${reference}`);
-      responseMessage = "Payment failed";
+    // Try to parse the request body
+    let payload = {};
+    try {
+      payload = await request.json();
+      console.log("Payload received:", JSON.stringify(payload, null, 2));
+    } catch (parseError) {
+      console.log("Failed to parse JSON:", parseError.message);
+      payload = { error: "Invalid JSON" };
     }
 
-    // Always return HTTP 200 to acknowledge receipt (as per Marz Pay docs)
-    return Response.json({ 
-      success: true, 
-      message: responseMessage,
+    // Extract basic info
+    const reference = payload?.transaction?.reference || payload?.reference || "unknown";
+    const eventType = payload?.event_type || "unknown";
+    const status = payload?.transaction?.status || payload?.status || "unknown";
+
+    console.log("Extracted info:", { reference, eventType, status });
+
+    // Always return success to Marz Pay
+    const response = {
+      success: true,
+      message: "Webhook received and processed",
       reference: reference,
       event_type: eventType,
+      status: status,
       timestamp: new Date().toISOString()
-    });
-    
+    };
+
+    console.log("Sending response:", response);
+    return Response.json(response);
+
   } catch (error) {
-    console.error("Webhook error:", error);
+    console.error("=== WEBHOOK ERROR ===");
+    console.error("Error:", error);
+    console.error("Stack:", error.stack);
     
-    // Return a proper JSON error response
-    return Response.json(
-      { 
-        success: false, 
-        message: "Webhook processing failed",
-        error: error.message,
-        timestamp: new Date().toISOString()
-      },
-      { status: 500 }
-    );
+    // Even on error, return JSON
+    return Response.json({
+      success: false,
+      message: "Webhook error occurred",
+      error: error.message,
+      timestamp: new Date().toISOString()
+    }, { status: 200 }); // Return 200 to prevent retries
   }
 }
 
-// Handle GET requests for testing
 export async function GET() {
   return Response.json({
     message: "Webhook endpoint is working",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    status: "healthy"
   });
 }
 

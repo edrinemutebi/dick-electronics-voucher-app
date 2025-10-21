@@ -1,7 +1,7 @@
 import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
 import { storePendingPayment, getVoucher } from "../../lib/storage.js";
-
+// hey
 export async function POST(request) {
   try {
     console.log("API Route: /api/pay called");
@@ -9,7 +9,7 @@ export async function POST(request) {
     console.log("Received data:", { phone, amount });
 
     if (!phone || !amount) {
-      console.log("Validation failed: missing phone or amount");
+      console.log("Validation process failed: missing phone or amount");
       return Response.json(
         { success: false, message: "Phone and amount required" },
         { status: 400 }

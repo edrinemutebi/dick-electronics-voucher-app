@@ -12,6 +12,7 @@ function storePendingPayment(reference, phone, amount, transactionId) {
     transactionId,
     status: 'processing',
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     voucher: null
   });
 }

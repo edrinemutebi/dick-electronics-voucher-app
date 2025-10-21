@@ -5,6 +5,7 @@
 "use client";
 
 import { useState } from "react";
+import { updatePaymentStatus } from "./lib/storage.js";
 
 export default function Home() {
   const [phone, setPhone] = useState("");
@@ -16,6 +17,8 @@ export default function Home() {
   const [paymentReference, setPaymentReference] = useState(null);
   const [checkingPayment, setCheckingPayment] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [pollingInterval, setPollingInterval] = useState(null);
 
   // Phone number validation for Uganda
   const validatePhoneNumber = (phone) => {
@@ -41,6 +44,8 @@ export default function Home() {
   const checkPaymentStatus = async (reference) => {
     setCheckingPayment(true);
     try {
+      console.log(`🔍 Checking payment status for reference: ${reference}`);
+      
       const res = await fetch("/api/check-payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -52,28 +57,36 @@ export default function Home() {
       }
 
       const data = await res.json();
+      console.log(`📊 Payment status response:`, data);
       
       if (data.success) {
-        if (data.data.status === "successful" && data.data.voucher) {
+        const status = data.data.status;
+        console.log(`📊 Current status: ${status}`);
+        
+        if (status === "successful" && data.data.voucher) {
+          console.log(`✅ Payment successful! Voucher: ${data.data.voucher}`);
           setVoucher(data.data.voucher);
           setMessage(`Payment completed! Your voucher is ready.`);
           setPaymentReference(null); // Clear reference since payment is complete
           return true; // Payment completed
-        } else if (data.data.status === "failed") {
+        } else if (status === "failed") {
+          console.log(`❌ Payment failed`);
           setError("Payment failed. Please try again.");
           setPaymentReference(null);
           return true; // Payment failed
         } else {
-          // Still processing
-          setMessage(`Payment is still ${data.data.status}. Please wait...`);
+          // Still processing - don't show repetitive message, just log
+          console.log(`⏳ Payment still ${status}, continuing to poll...`);
+          // Don't set message for processing status - let animation handle it
           return false; // Still processing
         }
       } else {
+        console.error(`❌ Payment check failed: ${data.message}`);
         setError(data.message || "Failed to check payment status");
         return true; // Error occurred
       }
     } catch (err) {
-      console.error("Check payment error:", err);
+      console.error("❌ Check payment error:", err);
       setError("Failed to check payment status. Please try again.");
       return true; // Error occurred
     } finally {
@@ -82,21 +95,84 @@ export default function Home() {
   };
 
   const startPaymentPolling = (reference) => {
+    console.log(`🔄 Starting payment polling for reference: ${reference}`);
+    
+    // Clear any existing polling
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+    }
+    
+    setStatusMessage("Payment initiated, waiting for confirmation...");
+    let pollCount = 0;
+    const maxPolls = 30; // 30 * 2 seconds = 60 seconds max
+    let pollingActive = true; // Flag to control polling
+    
     const pollInterval = setInterval(async () => {
+      if (!pollingActive) {
+        console.log(`🛑 Polling stopped for reference: ${reference}`);
+        return;
+      }
+      
+      pollCount++;
+      console.log(`🔍 Polling attempt ${pollCount}/${maxPolls} for reference: ${reference}`);
+      
+      // Update status message based on polling progress
+      if (pollCount <= 5) {
+        setStatusMessage("Payment initiated, waiting for confirmation...");
+      } else if (pollCount <= 15) {
+        setStatusMessage("Still processing payment, please wait...");
+      } else if (pollCount <= 25) {
+        setStatusMessage("Payment taking longer than usual, please be patient...");
+      } else {
+        setStatusMessage("Final attempt, please check your phone for confirmation...");
+      }
+      
+      // Show timeout warning after 30 seconds (15 attempts)
+      if (pollCount === 15) {
+        console.log("⚠️ Payment taking longer than expected - user can stop if needed");
+      }
+      
       const isComplete = await checkPaymentStatus(reference);
       if (isComplete) {
+        console.log(`✅ Payment completed for reference: ${reference}`);
+        setStatusMessage("Payment completed successfully!");
+        pollingActive = false;
         clearInterval(pollInterval);
+        setPollingInterval(null);
+      } else if (pollCount >= maxPolls) {
+        console.log(`⏰ Polling timeout reached for reference: ${reference}`);
+        pollingActive = false;
+        clearInterval(pollInterval);
+        setPollingInterval(null);
+        if (paymentReference === reference) {
+          setError("Payment timeout after 60 seconds. Please check your phone for payment confirmation or try again.");
+          setPaymentReference(null);
+          setStatusMessage("Payment timeout - please try again");
+          // Trigger failed status in storage
+          updatePaymentStatus(reference, "failed");
+        }
       }
-    }, 3000); // Check every 3 seconds
+    }, 2000); // Check every 2 seconds as requested
+    
+    // Store the interval for cleanup
+    setPollingInterval(pollInterval);
 
-    // Stop polling after 5 minutes (300 seconds)
+    // Stop polling after 60 seconds - backup timeout
     setTimeout(() => {
-      clearInterval(pollInterval);
-      if (paymentReference === reference) {
-        setError("Payment timeout. Please check your phone for payment confirmation or try again.");
-        setPaymentReference(null);
+      if (pollingActive) {
+        console.log(`⏰ Backup timeout reached for reference: ${reference}`);
+        pollingActive = false;
+        clearInterval(pollInterval);
+        setPollingInterval(null);
+        if (paymentReference === reference) {
+          setError("Payment timeout after 60 seconds. Please check your phone for payment confirmation or try again.");
+          setPaymentReference(null);
+          setStatusMessage("Payment timeout - please try again");
+          // Trigger failed status in storage
+          updatePaymentStatus(reference, "failed");
+        }
       }
-    }, 300000);
+    }, 60000); // 60 seconds timeout
   };
 
   const simulateFailedPayment = async () => {
@@ -125,6 +201,12 @@ export default function Home() {
   const handlePayment = async () => {
     setError("");
     setMessage("");
+    
+    // Clear any existing polling before starting new payment
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      setPollingInterval(null);
+    }
     setVoucher(null);
 
     // Validation
@@ -165,14 +247,15 @@ export default function Home() {
           setVoucher(data.data.voucher);
         }
         
-        // Show detailed Marz API response information
+        // Hide success message - just handle the logic silently
         const marzResponse = data.data.paymentResponse;
-        let successMessage = "Payment initiated successfully!";
+        let successMessage = ""; // Empty message - no green card shown
         
         if (data.data.voucher) {
-          successMessage += " Your voucher code is ready.";
+          // Only show message if voucher is ready
+          successMessage = "Your voucher code is ready.";
         } else {
-          successMessage += " Please wait for payment confirmation.";
+          // No message shown for processing - just start polling silently
           // Store reference for polling if payment is still processing
           if (data.data.reference) {
             setPaymentReference(data.data.reference);
@@ -181,22 +264,23 @@ export default function Home() {
           }
         }
         
-        if (marzResponse && marzResponse.data) {
-          const transaction = marzResponse.data.transaction;
-          const collection = marzResponse.data.collection;
-          
-          if (transaction && collection) {
-            successMessage = `Payment ${marzResponse.status}! 
-            Transaction ID: ${transaction.uuid}
-            Amount: ${collection.amount.formatted} ${collection.amount.currency}
-            Status: ${transaction.status}
-            Mode: ${collection.mode}`;
-            
-            if (data.data.voucher) {
-              successMessage += `\nVoucher Code: ${data.data.voucher}`;
-            }
-          }
-        }
+        // Hide detailed transaction information - just show simple message
+        // if (marzResponse && marzResponse.data) {
+        //   const transaction = marzResponse.data.transaction;
+        //   const collection = marzResponse.data.collection;
+        //   
+        //   if (transaction && collection) {
+        //     successMessage = `Payment ${marzResponse.status}! 
+        //     Transaction ID: ${transaction.uuid}
+        //     Amount: ${collection.amount.formatted} ${collection.amount.currency}
+        //     Status: ${transaction.status}
+        //     Mode: ${collection.mode}`;
+        //     
+        //     if (data.data.voucher) {
+        //       successMessage += `\nVoucher Code: ${data.data.voucher}`;
+        //     }
+        //   }
+        // }
         
         setMessage(successMessage);
       } else {
@@ -215,10 +299,27 @@ export default function Home() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "2rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", width: "100%", maxWidth: "400px", marginBottom: "1rem" }}>
+    <>
+      <style jsx>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes bounce {
+          0%, 80%, 100% {
+            transform: scale(0);
+          }
+          40% {
+            transform: scale(1);
+          }
+        }
+      `}</style>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "2rem" }}>
+      <div style={{ display: "flex", justifyContent: "center", width: "100%", maxWidth: "400px", marginBottom: "1rem" }}>
         <h1>Buy Voucher</h1>
-        <button
+        {/* Debug button hidden */}
+        {/* <button
           onClick={() => setDebugMode(!debugMode)}
           style={{
             padding: "0.5rem",
@@ -231,10 +332,11 @@ export default function Home() {
           }}
         >
           {debugMode ? "Hide Debug" : "Debug"}
-        </button>
+        </button> */}
       </div>
       
-      {debugMode && (
+      {/* Debug panel hidden */}
+      {/* {debugMode && (
         <div style={{ 
           width: "100%", 
           maxWidth: "400px", 
@@ -283,7 +385,7 @@ export default function Home() {
             </div>
           )}
         </div>
-      )}
+      )} */}
       <input
         type="tel"
         placeholder="0701234567 or +256701234567"
@@ -318,21 +420,21 @@ export default function Home() {
         </select>
       <button
         onClick={handlePayment}
-        disabled={loading || !phone.trim()}
+        disabled={loading || !phone.trim() || (paymentReference && !voucher)}
         style={{ 
           padding: "0.75rem 2rem", 
-          backgroundColor: loading ? "#ccc" : "#007bff",
+          backgroundColor: (loading || (paymentReference && !voucher)) ? "#ccc" : "#007bff",
           color: "white",
           border: "none",
           borderRadius: "4px",
           fontSize: "1rem",
-          cursor: loading ? "not-allowed" : "pointer",
+          cursor: (loading || (paymentReference && !voucher)) ? "not-allowed" : "pointer",
           width: "300px"
         }}
       >
-        {loading ? "Processing Payment..." : "Pay Now"}
+        {loading ? "Processing Payment..." : (paymentReference && !voucher) ? "Payment Processing..." : "Pay Now"}
       </button>
-      {message && (
+      {message && !paymentReference && (
         <div style={{ 
           marginTop: "1rem", 
           padding: "1rem", 
@@ -348,32 +450,121 @@ export default function Home() {
       {paymentReference && !voucher && (
         <div style={{ 
           marginTop: "1rem", 
-          padding: "1rem", 
-          backgroundColor: "#fff3cd", 
-          color: "#856404",
-          borderRadius: "4px",
+          padding: "2rem", 
+          backgroundColor: "#f8f9fa", 
+          color: "#495057",
+          borderRadius: "8px",
           width: "300px",
           textAlign: "center",
-          border: "1px solid #ffeaa7"
+          border: "2px solid #e9ecef",
+          boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
         }}>
-          <p style={{ marginBottom: "1rem" }}>
-            Payment is being processed... This may take a few minutes.
+          {/* Loading Animation */}
+          <div style={{ 
+            display: "flex", 
+            flexDirection: "column", 
+            alignItems: "center",
+            marginBottom: "1rem"
+          }}>
+            <div style={{
+              width: "40px",
+              height: "40px",
+              border: "4px solid #e9ecef",
+              borderTop: "4px solid #007bff",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+              marginBottom: "1rem"
+            }}></div>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              fontSize: "1.1rem",
+              fontWeight: "500",
+              color: "#007bff"
+            }}>
+              <span>Processing Payment</span>
+              <div style={{
+                display: "flex",
+                gap: "2px"
+              }}>
+                <div style={{
+                  width: "4px",
+                  height: "4px",
+                  backgroundColor: "#007bff",
+                  borderRadius: "50%",
+                  animation: "bounce 1.4s ease-in-out infinite both"
+                }}></div>
+                <div style={{
+                  width: "4px",
+                  height: "4px",
+                  backgroundColor: "#007bff",
+                  borderRadius: "50%",
+                  animation: "bounce 1.4s ease-in-out infinite both",
+                  animationDelay: "0.16s"
+                }}></div>
+                <div style={{
+                  width: "4px",
+                  height: "4px",
+                  backgroundColor: "#007bff",
+                  borderRadius: "50%",
+                  animation: "bounce 1.4s ease-in-out infinite both",
+                  animationDelay: "0.32s"
+                }}></div>
+              </div>
+            </div>
+          </div>
+          
+          <p style={{ 
+            marginBottom: "1rem", 
+            fontSize: "0.9rem",
+            color: "#6c757d"
+          }}>
+            Please wait while we confirm your payment...
           </p>
+          
+          {/* Manual stop button */}
           <button
-            onClick={() => checkPaymentStatus(paymentReference)}
-            disabled={checkingPayment}
-            style={{ 
-              padding: "0.5rem 1rem", 
-              backgroundColor: checkingPayment ? "#ccc" : "#ffc107",
-              color: "#000",
+            onClick={() => {
+              console.log("🛑 User manually stopped polling");
+              if (pollingInterval) {
+                clearInterval(pollingInterval);
+                setPollingInterval(null);
+              }
+              setPaymentReference(null);
+              setStatusMessage("");
+              setError("Payment processing stopped by user. You can try again if needed.");
+            }}
+            style={{
+              padding: "0.5rem 1rem",
+              backgroundColor: "#dc3545",
+              color: "white",
               border: "none",
-              borderRadius: "4px",
+              borderRadius: "6px",
               fontSize: "0.875rem",
-              cursor: checkingPayment ? "not-allowed" : "pointer"
+              cursor: "pointer",
+              transition: "all 0.2s ease"
             }}
           >
-            {checkingPayment ? "Checking..." : "Check Status"}
+            Stop Processing
           </button>
+        </div>
+      )}
+      
+      {/* Status message below processing card */}
+      {paymentReference && !voucher && statusMessage && (
+        <div style={{
+          marginTop: "0.5rem",
+          padding: "0.75rem",
+          backgroundColor: "#f8f9fa",
+          color: "#495057",
+          borderRadius: "6px",
+          width: "300px",
+          textAlign: "center",
+          fontSize: "0.875rem",
+          border: "1px solid #e9ecef"
+        }}>
+          {statusMessage}
         </div>
       )}
       
@@ -404,6 +595,7 @@ export default function Home() {
           </p>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

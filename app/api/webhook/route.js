@@ -43,6 +43,7 @@ export async function POST(request) {
   try {
     console.log("=== MARZ PAY WEBHOOK RECEIVED ===");
     console.log("Timestamp:", new Date().toISOString());
+    console.log("Custom Callback URL: https://dick-electronics-voucher-app.vercel.app/api/webhook");
     
     const payload = await request.json();
     console.log("Marz Pay payload:", JSON.stringify(payload, null, 2));
@@ -97,6 +98,20 @@ export async function POST(request) {
     let responseMessage = "Webhook received";
     let voucher = null;
 
+    // Import storage functions
+    const { updatePaymentStatus, getPayment, storePendingPayment } = await import("../../lib/storage.js");
+    
+    // Check if payment exists in storage
+    let existingPayment = getPayment(reference);
+    console.log(`🔍 Payment lookup for reference ${reference}:`, existingPayment ? 'Found' : 'Not found');
+    
+    // If payment doesn't exist, create it (for webhook-only scenarios)
+    if (!existingPayment) {
+      console.log(`📝 Creating payment record for webhook-only scenario: ${reference}`);
+      storePendingPayment(reference, phoneNumber || "+256000000000", amount || 1000, `webhook-${Date.now()}`);
+      existingPayment = getPayment(reference);
+    }
+    
     // Use mapped status for decision making
     if (mappedStatus === "completed" || eventType === "collection.completed") {
       console.log(`✅ Payment completed for reference: ${reference}`);
@@ -105,11 +120,24 @@ export async function POST(request) {
       if (amount) {
         voucher = generateVoucher(amount);
         console.log(`🎫 Generated voucher: ${voucher} for amount: ${amount} UGX`);
+        
+        // Update payment status in storage
+        updatePaymentStatus(reference, "successful", voucher);
+        console.log(`💾 Updated payment status in storage for reference: ${reference}`);
+        
+        // Verify the update
+        const updatedPayment = getPayment(reference);
+        console.log(`🔍 Verification - Updated payment status: ${updatedPayment?.status}`);
       }
       
       responseMessage = `Payment completed successfully. Voucher: ${voucher || 'N/A'}`;
     } else if (mappedStatus === "failed" || eventType === "collection.failed") {
       console.log(`❌ Payment failed for reference: ${reference}`);
+      
+      // Update payment status to failed in storage
+      updatePaymentStatus(reference, "failed");
+      console.log(`💾 Updated payment status to failed in storage for reference: ${reference}`);
+      
       responseMessage = "Payment failed";
     } else if (mappedStatus === "pending") {
       console.log(`⏳ Payment pending for reference: ${reference}`);

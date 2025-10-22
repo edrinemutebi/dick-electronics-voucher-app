@@ -14,7 +14,7 @@ export async function POST(request) {
     console.log(`🔍 Checking payment status for reference: ${reference}`);
     
     // Check if payment is completed and has voucher
-    const voucher = getVoucher(reference);
+    const voucher = await getVoucher(reference);
     if (voucher) {
       console.log(`✅ Payment completed with voucher: ${voucher.voucher}`);
       return Response.json({
@@ -30,7 +30,7 @@ export async function POST(request) {
     }
     
     // Check if payment exists in storage
-    const payment = getPayment(reference);
+    const payment = await getPayment(reference);
     if (!payment) {
       console.log(`❌ Payment not found for reference: ${reference}`);
       return Response.json(
@@ -71,7 +71,7 @@ export async function POST(request) {
               console.log(`🎫 Generated voucher: ${voucher} for amount: ${payment.amount}`);
               
               // Update payment status with voucher
-              updatePaymentStatus(reference, "successful", voucher);
+             await updatePaymentStatus(reference, "successful", voucher);
               
               return Response.json({
                 success: true,
@@ -85,7 +85,7 @@ export async function POST(request) {
               });
             } else if (marzData.data.internalStatus === 'failed') {
               // Update payment status to failed
-              updatePaymentStatus(reference, "failed");
+              await updatePaymentStatus(reference, "failed");
               
               return Response.json({
                 success: true,

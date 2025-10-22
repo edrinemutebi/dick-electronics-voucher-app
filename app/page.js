@@ -1,11 +1,12 @@
-
-
-
-
 "use client";
 
 import { useState } from "react";
 import { updatePaymentStatus } from "./lib/storage.js";
+import { addDoc, collection } from "firebase/firestore";
+// import { db } from "@/lib/firebase.js";
+import { db } from "./lib/firebase.js"; // relative path
+
+
 
 export default function Home() {
   const [phone, setPhone] = useState("");
@@ -41,58 +42,178 @@ export default function Home() {
     return cleanPhone;
   };
 
+
+
+
+
   const checkPaymentStatus = async (reference) => {
-    setCheckingPayment(true);
-    try {
-      console.log(`🔍 Checking payment status for reference: ${reference}`);
-      
-      const res = await fetch("/api/check-payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reference }),
-      });
+  setCheckingPayment(true);
+  try {
+    console.log(`🔍 Checking payment status for reference: ${reference}`);
+    
+    const res = await fetch("/api/check-payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reference }),
+    });
 
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-
-      const data = await res.json();
-      console.log(`📊 Payment status response:`, data);
-      
-      if (data.success) {
-        const status = data.data.status;
-        console.log(`📊 Current status: ${status}`);
-        
-        if (status === "successful" && data.data.voucher) {
-          console.log(`✅ Payment successful! Voucher: ${data.data.voucher}`);
-          setVoucher(data.data.voucher);
-          setMessage(`Payment completed! Your voucher is ready.`);
-          setPaymentReference(null); // Clear reference since payment is complete
-          return true; // Payment completed
-        } else if (status === "failed") {
-          console.log(`❌ Payment failed`);
-          setError("Payment failed. Please try again.");
-          setPaymentReference(null);
-          return true; // Payment failed
-        } else {
-          // Still processing - don't show repetitive message, just log
-          console.log(`⏳ Payment still ${status}, continuing to poll...`);
-          // Don't set message for processing status - let animation handle it
-          return false; // Still processing
-        }
-      } else {
-        console.error(`❌ Payment check failed: ${data.message}`);
-        setError(data.message || "Failed to check payment status");
-        return true; // Error occurred
-      }
-    } catch (err) {
-      console.error("❌ Check payment error:", err);
-      setError("Failed to check payment status. Please try again.");
-      return true; // Error occurred
-    } finally {
-      setCheckingPayment(false);
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`);
     }
-  };
+
+    const data = await res.json();
+    console.log("📊 Payment status response:", data);
+
+    if (data.success) {
+      const status = data.data.status;
+      console.log(`📊 Current status: ${status}`);
+
+      if (status === "successful") {
+        console.log("✅ Payment marked successful, fetching voucher...");
+
+        const voucherRes = await fetch("/api/get-voucher", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount, phone }),
+        });
+
+        const voucherData = await voucherRes.json();
+
+        if (voucherData.success) {
+          setVoucher(voucherData.voucher);
+          setMessage("Payment completed! Your voucher is ready.");
+          setPaymentReference(null); // clear after completion
+
+          // ✅ Save successful transaction to Firestore
+          try {
+            await addDoc(collection(db, "transactions"), {
+              phone,
+              amount,
+              voucher: voucherData.voucher,
+              status: "successful",
+              reference,
+              createdAt: new Date(),
+            });
+            console.log("✅ Transaction saved to Firestore");
+          } catch (fireErr) {
+            console.error("❌ Failed to save transaction:", fireErr);
+          }
+
+          return true; // Payment completed
+        } else {
+          console.warn("⚠️ Voucher not available after successful payment.");
+          setError("Payment done, but no voucher available right now. Please contact support.");
+          return true;
+        }
+
+      } else if (status === "failed") {
+        console.log("❌ Payment failed.");
+        setError("Payment failed. Please try again.");
+        setPaymentReference(null);
+
+        // Optionally save failed attempt
+        try {
+          await addDoc(collection(db, "transactions"), {
+            phone,
+            amount,
+            status: "failed",
+            reference,
+            createdAt: new Date(),
+          });
+          console.log("⚠️ Failed transaction recorded in Firestore.");
+        } catch (fireErr) {
+          console.error("❌ Failed to record failed transaction:", fireErr);
+        }
+
+        return true; // stop polling
+
+      } else {
+        console.log(`⏳ Payment still ${status}, continuing to poll...`);
+        return false; // Still processing
+      }
+
+    } else {
+      console.error(`❌ Payment check failed: ${data.message}`);
+      setError(data.message || "Failed to check payment status");
+      return true; // Stop polling
+    }
+  } catch (err) {
+    console.error("❌ Check payment error:", err);
+    setError("Failed to check payment status. Please try again.");
+    return true; // Stop polling
+  } finally {
+    setCheckingPayment(false);
+  }
+};
+
+  // const checkPaymentStatus = async (reference) => {
+  //   setCheckingPayment(true);
+  //   try {
+  //     console.log(`🔍 Checking payment status for reference: ${reference}`);
+      
+  //     const res = await fetch("/api/check-payment", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ reference }),
+  //     });
+
+  //     if (!res.ok) {
+  //       throw new Error(`HTTP error! status: ${res.status}`);
+  //     }
+
+  //     const data = await res.json();
+  //     console.log(`📊 Payment status response:`, data);
+      
+  //     if (data.success) {
+  //       const status = data.data.status;
+  //       console.log(`📊 Current status: ${status}`);
+        
+  //       // if (status === "successful" && data.data.voucher) {
+  //       //   console.log(`✅ Payment successful! Voucher: ${data.data.voucher}`);
+  //       //   setVoucher(data.data.voucher);
+  //       //   setMessage(`Payment completed! Your voucher is ready.`);
+  //       //   setPaymentReference(null); // Clear reference since payment is complete
+  //       //   return true; // Payment completed
+  //       // } 
+
+  //     if (status === "successful") {
+  //       const voucherRes = await fetch("/api/get-voucher", {
+  //         method: "POST",
+  //         headers: { "Content-Type": "application/json" },
+  //         body: JSON.stringify({ amount, phone }),
+  //       });
+
+  //       const voucherData = await voucherRes.json();
+  //       if (voucherData.success) {
+  //         setVoucher(voucherData.voucher);
+  //         setMessage("Payment completed! Your voucher is ready.");
+  //       } else {
+  //         setError("Payment done, but no voucher available right now. Please contact support.");
+  //       }
+  //     } else if (status === "failed") {
+  //       console.log(`❌ Payment failed`);
+  //       setError("Payment failed. Please try again.");
+  //       setPaymentReference(null);
+  //       return true; // Payment failed
+  //     } else {
+  //       // Still processing - don't show repetitive message, just log
+  //       console.log(`⏳ Payment still ${status}, continuing to poll...`);
+  //       // Don't set message for processing status - let animation handle it
+  //       return false; // Still processing
+  //     }
+  //     } else {
+  //       console.error(`❌ Payment check failed: ${data.message}`);
+  //       setError(data.message || "Failed to check payment status");
+  //       return true; // Error occurred
+  //     }
+  //   } catch (err) {
+  //     console.error("❌ Check payment error:", err);
+  //     setError("Failed to check payment status. Please try again.");
+  //     return true; // Error occurred
+  //   } finally {
+  //     setCheckingPayment(false);
+  //   }
+  // };
 
   const startPaymentPolling = (reference) => {
     console.log(`🔄 Starting payment polling for reference: ${reference}`);
@@ -524,7 +645,7 @@ export default function Home() {
           </p>
           
           {/* Manual stop button */}
-          <button
+          {/* <button
             onClick={() => {
               console.log("🛑 User manually stopped polling");
               if (pollingInterval) {
@@ -547,7 +668,7 @@ export default function Home() {
             }}
           >
             Stop Processing
-          </button>
+          </button> */}
         </div>
       )}
       

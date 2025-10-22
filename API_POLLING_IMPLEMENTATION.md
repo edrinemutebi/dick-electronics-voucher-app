@@ -122,3 +122,16 @@ Authorization: Basic {base64_credentials}
 4. **User testing** - Test with real MarzPay transactions
 
 The new API polling approach is **more reliable, easier to debug, and provides better user experience** than the webhook-based approach.
+
+
+
+
+
+
+
+
+
+
+
+
+

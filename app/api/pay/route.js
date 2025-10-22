@@ -347,6 +347,147 @@
 
 
 
+// import axios from "axios";
+// import { v4 as uuidv4 } from "uuid";
+// import { storePendingPayment, getVoucher } from "../../lib/storage.js";
+
+// export async function POST(request) {
+//   try {
+//     console.log("API Route: /api/pay called");
+//     const { phone, amount } = await request.json();
+
+//     if (!phone || !amount)
+//       return Response.json(
+//         { success: false, message: "Phone and amount required" },
+//         { status: 400 }
+//       );
+
+//     const reference = uuidv4();
+
+//     // ✅ Format phone
+//     let formattedPhone = phone.startsWith("+")
+//       ? phone
+//       : phone.startsWith("256")
+//       ? `+${phone}`
+//       : phone.startsWith("0")
+//       ? `+256${phone.substring(1)}`
+//       : `+256${phone}`;
+
+//     console.log("Formatted phone:", formattedPhone);
+
+//     // ✅ Handle local test voucher (no API call)
+//     if (amount === 600) {
+//       const voucher = await getVoucher(amount);
+//       if (!voucher)
+//         return Response.json({
+//           success: false,
+//           message:
+//             "Payment successful but no voucher available right now. Please contact support with reference.",
+//           reference,
+//         });
+
+//       return Response.json({
+//         success: true,
+//         data: {
+//           paymentResponse: {
+//             status: "success",
+//             message: "Local voucher generated for 600 UGX package",
+//             data: { transaction: { uuid: reference, status: "local" } },
+//           },
+//           voucher,
+//         },
+//       });
+//     }
+
+//     // ✅ Validate amount range
+//     if (amount < 500 || amount > 10000000)
+//       return Response.json(
+//         {
+//           success: false,
+//           message: "Amount must be between 500 and 10,000,000 UGX",
+//         },
+//         { status: 400 }
+//       );
+
+//     const MARZ_API_URL =
+//       process.env.MARZ_API_BASE_URL ||
+//       "https://wallet.wearemarz.com/api/v1/collect-money";
+//     const AUTH =
+//       process.env.MARZ_BASE64_AUTH ||
+//       "bWFyel80VEx3b05XUWVnY3hPRmVBOjdtSzZzUmdoNTJERkxaYmh6VDFNeFVteERFVEhuOW1q";
+
+//     const formData = new URLSearchParams({
+//       phone_number: formattedPhone,
+//       amount: amount.toString(),
+//       country: "UG",
+//       reference,
+//       description: `Voucher payment ${amount}`,
+//     });
+
+//     console.log("Calling Marz Pay API once...");
+//     const response = await axios.post(MARZ_API_URL, formData, {
+//       headers: {
+//         Authorization: `Basic ${AUTH}`,
+//         "Content-Type": "application/x-www-form-urlencoded",
+//       },
+//     });
+
+//     console.log("Marz response:", response.data);
+
+//     // ✅ Store pending payment for webhook follow-up
+//     const transactionId = response.data.data?.transaction?.uuid;
+//     storePendingPayment(reference, formattedPhone, amount, transactionId);
+
+//     const status = response.data.data?.transaction?.status;
+//     console.log("Transaction status:", status);
+
+//     // ✅ If payment successful → fetch voucher from Firebase
+//     if (status === "successful" || status === "success") {
+//       const voucher = await getVoucher(amount);
+
+//       if (!voucher)
+//         return Response.json({
+//           success: false,
+//           message:
+//             "Payment completed but no voucher available right now. Please contact support with reference.",
+//           reference,
+//         });
+
+//       return Response.json({
+//         success: true,
+//         data: {
+//           paymentResponse: response.data,
+//           voucher,
+//         },
+//       });
+//     }
+
+//     // ✅ If still pending
+//     return Response.json({
+//       success: true,
+//       message: `Payment initiated successfully. Status: ${status}. Please wait for confirmation.`,
+//       data: {
+//         paymentResponse: response.data,
+//         reference,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Payment error:", error.response?.data || error.message);
+//     const status = error.response?.status || 500;
+//     const message =
+//       error.response?.data?.message ||
+//       error.message ||
+//       "Unexpected payment error";
+//     return Response.json({ success: false, message }, { status });
+//   }
+// }
+
+
+
+
+
+
+
 import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
 import { storePendingPayment, getVoucher } from "../../lib/storage.js";
@@ -395,6 +536,8 @@ export async function POST(request) {
             data: { transaction: { uuid: reference, status: "local" } },
           },
           voucher,
+          reference,
+          transactionUuid: reference, // ✅ ADDED
         },
       });
     }
@@ -451,6 +594,7 @@ export async function POST(request) {
           message:
             "Payment completed but no voucher available right now. Please contact support with reference.",
           reference,
+          transactionUuid: transactionId, // ✅ ADDED
         });
 
       return Response.json({
@@ -458,6 +602,8 @@ export async function POST(request) {
         data: {
           paymentResponse: response.data,
           voucher,
+          reference,
+          transactionUuid: transactionId, // ✅ ADDED
         },
       });
     }
@@ -469,6 +615,7 @@ export async function POST(request) {
       data: {
         paymentResponse: response.data,
         reference,
+        transactionUuid: transactionId, // ✅ ADDED
       },
     });
   } catch (error) {

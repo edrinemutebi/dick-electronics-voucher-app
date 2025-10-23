@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { updatePaymentStatus } from "./lib/storage.js";
 import { addDoc, collection } from "firebase/firestore";
@@ -14,6 +14,9 @@ export default function Home() {
   const [amount, setAmount] = useState(1000);
   const [loading, setLoading] = useState(false);
   const [voucher, setVoucher] = useState(null);
+  const [smsSent, setSmsSent] = useState(false);
+  const smsLockRef = useRef(false);
+  const voucherRef = useRef(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [paymentReference, setPaymentReference] = useState(null);
@@ -29,6 +32,40 @@ export default function Home() {
     // Check if it's a valid Ugandan phone number (starts with 256, 0, or +256)
     const ugandaPhoneRegex = /^(\+?256|0)?[0-9]{9}$/;
     return ugandaPhoneRegex.test(cleanPhone);
+  };
+
+  // Auto-send SMS with voucher code once available (only once per purchase)
+  useEffect(() => {
+    if (!voucher || !phone) return;
+    if (smsLockRef.current) return; // prevent duplicate sends due to re-renders/StrictMode
+    smsLockRef.current = true;
+    (async () => {
+      try {
+        const number = formatPhoneNumber(phone);
+        const message = `Your WiFi voucher code is: ${voucher}`;
+        await fetch("/api/send-sms", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ number, message }),
+        });
+      } finally {
+        setSmsSent(true);
+      }
+    })();
+  }, [voucher, phone]);
+
+  // Helper to set voucher only once and stop any ongoing polling
+  const setVoucherOnce = (code) => {
+    if (!code) return;
+    if (voucherRef.current) return;
+    voucherRef.current = code;
+    setVoucher(code);
+    // Stop polling defensively
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      setPollingInterval(null);
+    }
+    setPaymentReference(null);
   };
 
   const formatPhoneNumber = (phone) => {
@@ -74,7 +111,7 @@ export default function Home() {
 
         // If API already returned a voucher, use it directly
         if (data.data && data.data.voucher) {
-          setVoucher(data.data.voucher);
+          setVoucherOnce(data.data.voucher);
           setMessage("Payment completed! Your voucher is ready.");
           setPaymentReference(null);
 
@@ -105,7 +142,7 @@ export default function Home() {
         const voucherData = await voucherRes.json();
 
         if (voucherData.success) {
-          setVoucher(voucherData.voucher);
+          setVoucherOnce(voucherData.voucher);
           setMessage("Payment completed! Your voucher is ready.");
           setPaymentReference(null); // clear after completion
 
@@ -286,6 +323,9 @@ export default function Home() {
       setPollingInterval(null);
     }
     setVoucher(null);
+    setSmsSent(false);
+    smsLockRef.current = false;
+    voucherRef.current = null;
 
     // Validation
     if (!phone.trim()) {
@@ -322,7 +362,7 @@ export default function Home() {
       if (data.success) {
         // Only set voucher if it exists (payment was successful)
         if (data.data.voucher) {
-          setVoucher(data.data.voucher);
+          setVoucherOnce(data.data.voucher);
         }
         
         // Hide success message - just handle the logic silently

@@ -2,7 +2,8 @@
 
 // import { db } from "../../../lib/firebase.js";
 import { db } from "../../lib/firebase.js";
-
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 import { collection, query, where, limit, getDocs, updateDoc, doc } from "firebase/firestore";
 
@@ -34,4 +35,8 @@ export async function POST(request) {
     console.error("Error fetching voucher:", err);
     return new Response(JSON.stringify({ success: false, message: "Internal Server Error" }), { status: 500 });
   }
+}
+
+export async function GET() {
+  return new Response(JSON.stringify({ success: true, message: "get-voucher alive" }), { status: 200 });
 }

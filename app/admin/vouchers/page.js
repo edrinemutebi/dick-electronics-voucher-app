@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { db } from "../../lib/firebase.js";
+import { auth, db } from "../../lib/firebase.js";
 import {
   addDoc,
   collection,
@@ -12,8 +12,11 @@ import {
   serverTimestamp,
   where,
 } from "firebase/firestore";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function VouchersAdminPage() {
+  const router = useRouter();
   const [code, setCode] = useState("");
   const [amount, setAmount] = useState(1000);
   const [bulk, setBulk] = useState("");
@@ -23,6 +26,12 @@ export default function VouchersAdminPage() {
   const [vouchers, setVouchers] = useState([]);
   const [filterAmount, setFilterAmount] = useState(0);
   const [onlyUnused, setOnlyUnused] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
+  const [authorized, setAuthorized] = useState(false);
+  const [activeTab, setActiveTab] = useState("vouchers"); // 'vouchers' | 'bulk' | 'transactions'
+  const [transactions, setTransactions] = useState([]);
+  const [txStatusFilter, setTxStatusFilter] = useState("all"); // all|successful|failed|pending
 
   const baseQuery = useMemo(() => {
     const col = collection(db, "vouchers");
@@ -46,6 +55,57 @@ export default function VouchersAdminPage() {
   useEffect(() => {
     refreshList();
   }, [baseQuery]);
+
+  async function refreshTransactions() {
+    try {
+      const col = collection(db, "transactions");
+      const constraints = [];
+      if (txStatusFilter !== "all") constraints.push(where("status", "==", txStatusFilter));
+      constraints.push(orderBy("createdAt", "desc"));
+      constraints.push(limit(50));
+      const snap = await getDocs(query(col, ...constraints));
+      setTransactions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  useEffect(() => {
+    if (authorized && activeTab === "transactions") {
+      refreshTransactions();
+    }
+  }, [authorized, activeTab, txStatusFilter]);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      try {
+        if (!user?.email) {
+          router.replace(`/login?callbackUrl=${encodeURIComponent("/admin/vouchers")}`);
+          return;
+        }
+        setUserEmail(user.email);
+        const q = query(
+          collection(db, "adminEmails"),
+          where("email", "==", user.email),
+          where("approved", "==", true),
+          limit(1)
+        );
+        const snap = await getDocs(q);
+        if (snap.empty) {
+          setAuthorized(false);
+          router.replace(`/login?callbackUrl=${encodeURIComponent("/admin/vouchers")}`);
+        } else {
+          setAuthorized(true);
+        }
+      } catch (e) {
+        setAuthorized(false);
+        router.replace(`/login?callbackUrl=${encodeURIComponent("/admin/vouchers")}`);
+      } finally {
+        setAuthChecked(true);
+      }
+    });
+    return () => unsub();
+  }, [router]);
 
   async function handleAddSingle(e) {
     e.preventDefault();
@@ -107,83 +167,215 @@ export default function VouchersAdminPage() {
     }
   }
 
+  if (!authChecked) {
+    return (
+      <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        Checking access...
+      </div>
+    );
+  }
+  if (!authorized) return null;
+
   return (
-    <div style={{ maxWidth: 800, margin: "2rem auto", padding: "1rem" }}>
-      <h1 style={{ marginBottom: "1rem" }}>Vouchers Admin</h1>
-
-      {message && (
-        <div style={{ background: "#e6ffed", border: "1px solid #b7eb8f", padding: "0.5rem 0.75rem", marginBottom: "0.75rem", color: "#135200" }}>
-          {message}
+    <div className="wrap">
+      <div className="topbar">
+        <h1>Admin</h1>
+        <div className="topbar-right">
+          <span className="email">{userEmail}</span>
+          <button onClick={() => signOut(auth)} className="btn">Sign out</button>
         </div>
-      )}
-      {error && (
-        <div style={{ background: "#fff1f0", border: "1px solid #ffa39e", padding: "0.5rem 0.75rem", marginBottom: "0.75rem", color: "#a8071a" }}>
-          {error}
-        </div>
-      )}
+      </div>
 
-      <section style={{ marginBottom: "1.5rem" }}>
-        <h2 style={{ margin: 0, marginBottom: "0.5rem" }}>Add Single</h2>
-        <form onSubmit={handleAddSingle} style={{ display: "grid", gap: "0.5rem", gridTemplateColumns: "1fr 200px 120px" }}>
-          <input placeholder="Code" value={code} onChange={e => setCode(e.target.value)} />
-          <select value={amount} onChange={e => setAmount(Number(e.target.value))}>
-            <option value={1000}>UGX 1,000</option>
-            <option value={1500}>UGX 1,500</option>
-            <option value={7000}>UGX 7,000</option>
-          </select>
-          <button type="submit" disabled={loading}>Add</button>
-        </form>
-      </section>
+      {message && <div className="alert success">{message}</div>}
+      {error && <div className="alert error">{error}</div>}
 
-      <section style={{ marginBottom: "1.5rem" }}>
-        <h2 style={{ margin: 0, marginBottom: "0.5rem" }}>Add Bulk</h2>
-        <form onSubmit={handleAddBulk}>
-          <div style={{ display: "grid", gap: "0.5rem", gridTemplateColumns: "1fr 200px 120px" }}>
-            <textarea placeholder="One code per line" rows={5} value={bulk} onChange={e => setBulk(e.target.value)} />
-            <select value={amount} onChange={e => setAmount(Number(e.target.value))}>
-              <option value={1000}>UGX 1,000</option>
-              <option value={1500}>UGX 1,500</option>
-              <option value={7000}>UGX 7,000</option>
-            </select>
-            <button type="submit" disabled={loading}>Add All</button>
-          </div>
-        </form>
-      </section>
+      <div className="tabs">
+        <button className={`tab ${activeTab === "vouchers" ? "active" : ""}`} onClick={() => setActiveTab("vouchers")}>
+          Vouchers
+        </button>
+        <button className={`tab ${activeTab === "bulk" ? "active" : ""}`} onClick={() => setActiveTab("bulk")}>Bulk Add</button>
+        <button className={`tab ${activeTab === "transactions" ? "active" : ""}`} onClick={() => setActiveTab("transactions")}>
+          Transactions
+        </button>
+      </div>
 
-      <section>
-        <h2 style={{ margin: 0, marginBottom: "0.5rem" }}>Inventory</h2>
-        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "0.5rem" }}>
-          <select value={filterAmount} onChange={e => setFilterAmount(Number(e.target.value))}>
-            <option value={0}>All amounts</option>
-            <option value={1000}>UGX 1,000</option>
-            <option value={1500}>UGX 1,500</option>
-            <option value={7000}>UGX 7,000</option>
-          </select>
-          <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <input type="checkbox" checked={onlyUnused} onChange={e => setOnlyUnused(e.target.checked)} /> Only unused
-          </label>
-          <button onClick={refreshList}>Refresh</button>
-        </div>
-        <div style={{ border: "1px solid #eee" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", padding: "0.5rem", fontWeight: 600, background: "#fafafa" }}>
-            <div>Code</div>
-            <div>Amount</div>
-            <div>Used</div>
-            <div>Assigned To</div>
-          </div>
-          {vouchers.map(v => (
-            <div key={v.id} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", padding: "0.5rem", borderTop: "1px solid #f0f0f0" }}>
-              <div>{v.code}</div>
-              <div>{v.amount?.toLocaleString?.() ?? v.amount}</div>
-              <div>{String(v.used)}</div>
-              <div>{v.assignedTo || ""}</div>
+      {activeTab === "vouchers" && (
+        <div className="card">
+          <section>
+            <h2>Add Single</h2>
+            <form onSubmit={handleAddSingle} className="form-grid">
+              <input placeholder="Code" value={code} onChange={e => setCode(e.target.value)} />
+              <select value={amount} onChange={e => setAmount(Number(e.target.value))}>
+                <option value={1000}>UGX 1,000</option>
+                <option value={1500}>UGX 1,500</option>
+                <option value={7000}>UGX 7,000</option>
+              </select>
+              <button type="submit" className="btn" disabled={loading}>Add</button>
+            </form>
+          </section>
+
+          <section>
+            <div className="toolbar">
+              <h2>Inventory</h2>
+              <div className="toolbar-right">
+                <select value={filterAmount} onChange={e => setFilterAmount(Number(e.target.value))}>
+                  <option value={0}>All amounts</option>
+                  <option value={1000}>UGX 1,000</option>
+                  <option value={1500}>UGX 1,500</option>
+                  <option value={7000}>UGX 7,000</option>
+                </select>
+                <label className="checkbox">
+                  <input type="checkbox" checked={onlyUnused} onChange={e => setOnlyUnused(e.target.checked)} /> Only unused
+                </label>
+                <button onClick={refreshList} className="btn subtle">Refresh</button>
+              </div>
             </div>
-          ))}
-          {vouchers.length === 0 && (
-            <div style={{ padding: "0.75rem" }}>No vouchers found</div>
-          )}
+            <div className="table table-desktop">
+              <div className="table-inner">
+                <div className="thead">
+                  <div>Code</div>
+                  <div>Amount</div>
+                  <div>Used</div>
+                  <div>Assigned To</div>
+                </div>
+                {vouchers.map(v => (
+                  <div key={v.id} className="trow">
+                    <div className="code">{v.code}</div>
+                    <div>{v.amount?.toLocaleString?.() ?? v.amount}</div>
+                    <div>{String(v.used)}</div>
+                    <div>{v.assignedTo || ""}</div>
+                  </div>
+                ))}
+                {vouchers.length === 0 && <div className="empty">No vouchers found</div>}
+              </div>
+            </div>
+
+            {/* Mobile card list */}
+            <div className="list-mobile">
+              {vouchers.map(v => (
+                <div key={v.id} className="card-row">
+                  <div className="row-line"><span className="label">Code</span><span className="value code">{v.code}</span></div>
+                  <div className="row-line"><span className="label">Amount</span><span className="value">{v.amount?.toLocaleString?.() ?? v.amount}</span></div>
+                  <div className="row-line"><span className="label">Used</span><span className="value">{String(v.used)}</span></div>
+                  <div className="row-line"><span className="label">Assigned To</span><span className="value">{v.assignedTo || ""}</span></div>
+                </div>
+              ))}
+              {vouchers.length === 0 && <div className="empty">No vouchers found</div>}
+            </div>
+          </section>
         </div>
-      </section>
+      )}
+
+      {activeTab === "bulk" && (
+        <div className="card">
+          <section>
+            <h2>Bulk Add Vouchers</h2>
+            <form onSubmit={handleAddBulk}>
+              <div className="form-grid-bulk">
+                <textarea placeholder="One code per line" rows={10} value={bulk} onChange={e => setBulk(e.target.value)} />
+                <div className="side">
+                  <label className="lbl">Amount</label>
+                  <select value={amount} onChange={e => setAmount(Number(e.target.value))}>
+                    <option value={1000}>UGX 1,000</option>
+                    <option value={1500}>UGX 1,500</option>
+                    <option value={7000}>UGX 7,000</option>
+                  </select>
+                  <button type="submit" className="btn" disabled={loading} style={{ marginTop: '.5rem' }}>Add All</button>
+                </div>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {activeTab === "transactions" && (
+        <div className="card">
+          <div className="toolbar">
+            <h2>Transactions</h2>
+            <div className="toolbar-right">
+              <select value={txStatusFilter} onChange={e => setTxStatusFilter(e.target.value)}>
+                <option value="all">All</option>
+                <option value="successful">Successful</option>
+                <option value="pending">Pending</option>
+                <option value="failed">Failed</option>
+              </select>
+              <button onClick={refreshTransactions} className="btn subtle">Refresh</button>
+            </div>
+          </div>
+          <div className="table tx">
+            <div className="thead">
+              <div>Date</div>
+              <div>Phone</div>
+              <div>Amount</div>
+              <div>Status</div>
+              <div>Voucher</div>
+              <div>Reference</div>
+            </div>
+            {transactions.map(t => (
+              <div key={t.id} className="trow">
+                <div>{t.createdAt?.toDate ? t.createdAt.toDate().toLocaleString() : ""}</div>
+                <div>{t.phone || ""}</div>
+                <div>{t.amount?.toLocaleString?.() ?? t.amount}</div>
+                <div className={`badge ${t.status}`}>{t.status}</div>
+                <div className="code" title={t.voucher || ""}>{t.voucher || ""}</div>
+                <div className="code" title={t.reference || ""}>{t.reference || ""}</div>
+              </div>
+            ))}
+            {transactions.length === 0 && <div className="empty">No transactions found</div>}
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        .wrap { max-width: 1000px; margin: 1rem auto; padding: 1rem; overflow-x:hidden; }
+        .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom: 0.75rem; }
+        .topbar h1{ margin:0; font-size:20px; }
+        .topbar-right{ display:flex; gap:.5rem; align-items:center; }
+        .email{ font-size:12px; color:#6b7280; }
+        .btn{ padding: .5rem .8rem; border:1px solid #e5e7eb; background:#fff; border-radius:8px; cursor:pointer; }
+        .btn.subtle{ background:#f9fafb; }
+        .tabs{ display:flex; gap:.5rem; margin-bottom:.75rem; }
+        .tab{ padding:.5rem .9rem; border:1px solid #e5e7eb; border-radius:999px; background:#fff; cursor:pointer; }
+        .tab.active{ background:#111827; color:#fff; border-color:#111827; }
+        .card{ background:#fff; border:1px solid #eef0f4; border-radius:16px; padding:1rem; box-shadow:0 10px 15px -3px rgba(16,24,40,.06); overflow:hidden; }
+        .form-grid{ display:grid; grid-template-columns: 1fr 200px 120px; gap:.5rem; }
+        .form-grid-bulk{ display:grid; grid-template-columns: 1fr 280px; gap:1rem; }
+        .form-grid-bulk .side{ display:flex; flex-direction:column; }
+        .toolbar{ display:flex; align-items:center; justify-content:space-between; margin: .5rem 0; flex-wrap: wrap; gap:.5rem; }
+        .toolbar-right{ display:flex; gap:.5rem; align-items:center; margin-left:auto; }
+        .checkbox{ display:flex; gap:.4rem; align-items:center; }
+        .table{ border:1px solid #eee; border-radius:10px; overflow-x:auto; overflow-y:hidden; width:100%; -webkit-overflow-scrolling:touch; background:#fff; }
+        .table-inner{ width:max-content; min-width:100%; }
+        .thead{ display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; padding:.5rem; font-weight:600; background:#fafafa; }
+        .trow{ display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; padding:.5rem; border-top:1px solid #f0f0f0; }
+        .table.tx .thead{ grid-template-columns: 1.5fr 1fr .8fr .8fr 1.2fr 1.5fr; }
+        .table.tx .trow{ grid-template-columns: 1.5fr 1fr .8fr .8fr 1.2fr 1.5fr; }
+        .code{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .list-mobile{ display:none; }
+        .card-row{ background:#fff; border:1px solid #eee; border-radius:12px; padding:.75rem; margin-top:.5rem; box-shadow:0 4px 6px -2px rgba(16,24,40,.06); }
+        .row-line{ display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.2rem 0; }
+        .row-line .label{ color:#6b7280; font-size:12px; }
+        .row-line .value{ font-size:14px; }
+        .alert{ padding:.5rem .75rem; border-radius:8px; margin-bottom:.75rem; }
+        .alert.success{ background:#e6ffed; border:1px solid #b7eb8f; color:#135200; }
+        .alert.error{ background:#fff1f0; border:1px solid #ffa39e; color:#a8071a; }
+        .badge{ display:inline-block; padding:.15rem .45rem; border-radius:999px; font-size:12px; background:#f3f4f6; }
+        .badge.successful{ background:#ecfdf5; color:#065f46; }
+        .badge.failed{ background:#fef2f2; color:#991b1b; }
+        .badge.pending{ background:#fff7ed; color:#92400e; }
+
+        /* Mobile */
+        @media (max-width: 700px){
+          .form-grid{ grid-template-columns: 1fr; }
+          .form-grid-bulk{ grid-template-columns: 1fr; }
+          /* Show cards on mobile, hide table */
+          .table-desktop{ display:none; }
+          .list-mobile{ display:block; }
+          /* Transactions still stack on mobile */
+          .table.tx .thead{ display:none; }
+          .table.tx .trow{ display:flex; flex-direction:column; gap:.25rem; }
+        }
+      `}</style>
     </div>
   );
 }

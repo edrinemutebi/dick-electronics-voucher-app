@@ -1,11 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { auth, db } from "../lib/firebase.js";
 import { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import { collection, query, where, limit, getDocs } from "firebase/firestore";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function LoginPage() {
+function LoginInner() {
   const router = useRouter();
   const search = useSearchParams();
   const [busy, setBusy] = useState(false);
@@ -58,6 +58,59 @@ export default function LoginPage() {
       setBusy(false);
     }
   }
+
+  // Process redirect result (and handle already signed-in user)
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      try {
+        setError("");
+        // If already signed in (e.g., from another tab), proceed
+        const current = auth.currentUser;
+        if (current?.email) {
+          const q1 = query(
+            collection(db, "adminEmails"),
+            where("email", "==", current.email),
+            where("approved", "==", true),
+            limit(1)
+          );
+          const snap1 = await getDocs(q1);
+          if (!cancelled) {
+            if (!snap1.empty) {
+              const cb = search.get("callbackUrl") || "/admin/vouchers";
+              router.replace(cb);
+              return;
+            } else {
+              setError("Your email is not approved for admin access");
+            }
+          }
+        }
+
+        // Handle redirect callback
+        const res = await getRedirectResult(auth);
+        if (res?.user?.email && !cancelled) {
+          const q2 = query(
+            collection(db, "adminEmails"),
+            where("email", "==", res.user.email),
+            where("approved", "==", true),
+            limit(1)
+          );
+          const snap2 = await getDocs(q2);
+          if (!snap2.empty) {
+            const cb = search.get("callbackUrl") || "/admin/vouchers";
+            router.replace(cb);
+          } else {
+            setError("Your email is not approved for admin access");
+          }
+        }
+      } catch (e) {
+        if (!cancelled) setError(e?.message || "Sign-in failed");
+      }
+    }
+    run();
+    return () => { cancelled = true; };
+  }, [router, search]);
+
   return (
     <div
       style={{
@@ -98,7 +151,7 @@ export default function LoginPage() {
           >
             DE
           </div>
-          <h1 style={{ margin: 0, fontSize: 24, color: "#111827" }}>Admin Portal</h1>
+          <h1 style={{ margin: 0, fontSize: 24, color: "#111827" }}>Admin Login</h1>
           <p style={{ margin: 0, color: "#6b7280" }}>
             Sign in with your approved Google account to continue.
           </p>
@@ -135,7 +188,7 @@ export default function LoginPage() {
             height="18"
             viewBox="0 0 48 48"
           >
-            <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.6 31.6 29.2 35 24 35c-6.1 0-11-4.9-11-11s4.9-11 11-11c2.8 0 5.4 1.1 7.4 2.8l5.7-5.7C33.3 7.1 28.9 5 24 5 13 5 4 14 4 25s9 20 20 20c11 0 19-9 19-20 0-1.3-.1-2.5-.4-3.5z"/>
+            <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.6 31.6 29.2 35 24 35c-6.1 0-11-4.9-11-11s4.9-11 11-11c2.8 0 5.4 1.1 7.4 2.8l5.7-5.7C33.3 7.1 28.9 5 24 5 17.1 5 10.9 9 7.6 14.7z"/>
             <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 16.2 18.9 13 24 13c2.8 0 5.4 1.1 7.4 2.8l5.7-5.7C33.3 7.1 28.9 5 24 5 17.1 5 10.9 9 7.6 14.7z"/>
             <path fill="#4CAF50" d="M24 45c5 0 9.4-1.9 12.8-5.1l-5.9-4.8C29 36.7 26.7 37.5 24 37.5c-5.2 0-9.6-3.4-11.2-8.1l-6.6 5C10 40.9 16.5 45 24 45z"/>
             <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1 3.2-3.3 5.8-6.2 7.5l.1.1 5.9 4.8c-.4.4 7.9-5.7 7.9-17.4 0-1.3-.1-2.5-.4-3.5z"/>
@@ -151,5 +204,13 @@ export default function LoginPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center" }}>Loading...</div>}>
+      <LoginInner />
+    </Suspense>
   );
 }

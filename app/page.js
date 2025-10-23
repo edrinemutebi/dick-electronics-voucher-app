@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { updatePaymentStatus } from "./lib/storage.js";
 import { addDoc, collection } from "firebase/firestore";
 // import { db } from "@/lib/firebase.js";
@@ -395,8 +396,11 @@ export default function Home() {
         }
       `}</style>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "2rem" }}>
-      <div style={{ display: "flex", justifyContent: "center", width: "100%", maxWidth: "400px", marginBottom: "1rem" }}>
-        <h1>Buy Voucher</h1>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: "480px", marginBottom: "1rem", textAlign: "center" }}>
+        <h1 style={{ margin: 0, fontSize: "1.4rem", lineHeight: 1.2 }}>BUY VOUCHER USING MOBILE MONEY</h1>
+        <div style={{ marginTop: ".5rem" }}>
+          <Image src="/logox.png" alt="Dick Electronics" width={120} height={120} style={{ height: "auto", width: "90px", objectFit: "contain" }} />
+        </div>
         {/* Debug button hidden */}
         {/* <button
           onClick={() => setDebugMode(!debugMode)}

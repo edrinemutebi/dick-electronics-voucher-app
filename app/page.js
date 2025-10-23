@@ -71,6 +71,30 @@ export default function Home() {
       if (status === "successful") {
         console.log("✅ Payment marked successful, fetching voucher...");
 
+        // If API already returned a voucher, use it directly
+        if (data.data && data.data.voucher) {
+          setVoucher(data.data.voucher);
+          setMessage("Payment completed! Your voucher is ready.");
+          setPaymentReference(null);
+
+          // ✅ Save successful transaction to Firestore
+          try {
+            await addDoc(collection(db, "transactions"), {
+              phone,
+              amount,
+              voucher: data.data.voucher,
+              status: "successful",
+              reference,
+              createdAt: new Date(),
+            });
+            console.log("✅ Transaction saved to Firestore");
+          } catch (fireErr) {
+            console.error("❌ Failed to save transaction:", fireErr);
+          }
+          return true;
+        }
+
+        // Otherwise fetch from vouchers inventory
         const voucherRes = await fetch("/api/get-voucher", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

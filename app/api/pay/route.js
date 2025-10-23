@@ -486,6 +486,7 @@
 
 
 
+console.log("API /api/pay started at", new Date().toISOString());
 
 
 import axios from "axios";

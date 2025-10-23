@@ -157,7 +157,7 @@ export default function Home() {
     
     setStatusMessage("Payment initiated, waiting for confirmation...");
     let pollCount = 0;
-    const maxPolls = 30; // 30 * 2 seconds = 60 seconds max
+    const maxPolls = 60; // 30 * 2 seconds = 60 seconds max
     let pollingActive = true; // Flag to control polling
     
     const pollInterval = setInterval(async () => {

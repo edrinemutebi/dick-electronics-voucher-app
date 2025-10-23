@@ -517,31 +517,6 @@ export async function POST(request) {
 
     console.log("Formatted phone:", formattedPhone);
 
-    // ✅ Handle local test voucher (no API call)
-    if (amount === 600) {
-      const voucher = await getVoucher(amount);
-      if (!voucher)
-        return Response.json({
-          success: false,
-          message:
-            "Payment successful but no voucher available right now. Please contact support with reference.",
-          reference,
-        });
-
-      return Response.json({
-        success: true,
-        data: {
-          paymentResponse: {
-            status: "success",
-            message: "Local voucher generated for 600 UGX package",
-            data: { transaction: { uuid: reference, status: "local" } },
-          },
-          voucher,
-          reference,
-          transactionUuid: reference, // ✅ ADDED
-        },
-      });
-    }
 
     // ✅ Validate amount range
     if (amount < 500 || amount > 10000000)

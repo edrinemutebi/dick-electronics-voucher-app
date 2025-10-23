@@ -468,7 +468,6 @@ export default function Home() {
           onChange={(e) => setAmount(Number(e.target.value))}
           style={{ marginBottom: "1rem", padding: "0.5rem", width: "300px" }}
         >
-          <option value={600}>Voucher UGX 600</option>
           <option value={1000}>Voucher UGX 1,000</option>
           <option value={1500}>Voucher UGX 1,500</option>
           <option value={7000}>Voucher UGX 7,000</option>

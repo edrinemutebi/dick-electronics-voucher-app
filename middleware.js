@@ -1,4 +1,9 @@
-// Middleware disabled: Admin access is now guarded client-side using Firebase Auth
+import { NextResponse } from "next/server";
+
+export function middleware() {
+  return NextResponse.next();
+}
+
 export const config = {
   matcher: [],
 };

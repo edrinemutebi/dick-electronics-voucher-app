@@ -488,6 +488,8 @@
 
 console.log("API /api/pay started at", new Date().toISOString());
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 import axios from "axios";
 import { v4 as uuidv4 } from "uuid";

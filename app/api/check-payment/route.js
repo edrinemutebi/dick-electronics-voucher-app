@@ -1,4 +1,6 @@
 import { getPayment, getVoucher, updatePaymentStatus } from "../../lib/storage.js";
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 export async function POST(request) {
   try {
@@ -47,8 +49,12 @@ export async function POST(request) {
       console.log(`🌐 Checking MarzPay API for transaction: ${payment.transactionId}`);
       
       try {
+        // Build base URL from request headers to work in local and production
+        const proto = request.headers.get('x-forwarded-proto') || 'https';
+        const host = request.headers.get('host');
+        const baseUrl = `${proto}://${host}`;
         // Call our MarzPay API checker
-        const marzCheckResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/check-marz-payment`, {
+        const marzCheckResponse = await fetch(`${baseUrl}/api/check-marz-payment`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -131,6 +137,10 @@ export async function POST(request) {
       { status: 500 }
     );
   }
+}
+
+export async function GET() {
+  return Response.json({ success: true, message: "check-payment alive" });
 }
 
 // Voucher generation function

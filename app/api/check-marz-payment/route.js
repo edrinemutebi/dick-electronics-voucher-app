@@ -1,4 +1,6 @@
 import axios from "axios";
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 /**
  * Check payment status using MarzPay API polling

@@ -1,10 +1,7 @@
-// Voucher generation function
-function generateVoucher(amount) {
-  const prefixMap = { 1000: "V1000", 1500: "V1500", 7000: "V7000" };
-  const prefix = prefixMap[amount] || "VXXXX";
-  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `${prefix}-${rand}`;
-}
+import { db } from "../../lib/firebase.js";
+import { collection, query, where, limit, getDocs, updateDoc, doc } from "firebase/firestore";
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 // MarzPay status mapping according to documentation
 function mapMarzPayStatus(providerStatus, provider) {
@@ -116,18 +113,34 @@ export async function POST(request) {
     if (mappedStatus === "completed" || eventType === "collection.completed") {
       console.log(`✅ Payment completed for reference: ${reference}`);
       
-      // Generate voucher for successful payment
+      // Fetch an unused voucher from Firestore and mark as used
       if (amount) {
-        voucher = generateVoucher(amount);
-        console.log(`🎫 Generated voucher: ${voucher} for amount: ${amount} UGX`);
-        
-        // Update payment status in storage
-        updatePaymentStatus(reference, "successful", voucher);
-        console.log(`💾 Updated payment status in storage for reference: ${reference}`);
-        
-        // Verify the update
-        const updatedPayment = getPayment(reference);
-        console.log(`🔍 Verification - Updated payment status: ${updatedPayment?.status}`);
+        const vouchersRef = collection(db, "vouchers");
+        const q = query(
+          vouchersRef,
+          where("amount", "==", amount),
+          where("used", "==", false),
+          limit(1)
+        );
+        const snapshot = await getDocs(q);
+
+        if (!snapshot.empty) {
+          const voucherDoc = snapshot.docs[0];
+          const voucherData = voucherDoc.data();
+
+          await updateDoc(doc(db, "vouchers", voucherDoc.id), {
+            used: true,
+            assignedTo: phoneNumber || "",
+            assignedAt: new Date(),
+          });
+
+          voucher = voucherData.code;
+          updatePaymentStatus(reference, "successful", voucher);
+          console.log(`🎫 Issued Firestore voucher: ${voucher} for amount: ${amount}`);
+        } else {
+          console.warn("No available vouchers in Firestore for amount:", amount);
+          updatePaymentStatus(reference, "successful");
+        }
       }
       
       responseMessage = `Payment completed successfully. Voucher: ${voucher || 'N/A'}`;

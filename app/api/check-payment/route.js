@@ -1,4 +1,6 @@
 import { getPayment, getVoucher, updatePaymentStatus } from "../../lib/storage.js";
+import { db } from "../../lib/firebase.js";
+import { collection, query, where, limit, getDocs, updateDoc, doc } from "firebase/firestore";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
@@ -72,23 +74,53 @@ export async function POST(request) {
             
             // Update our storage with the new status
             if (marzData.data.internalStatus === 'successful' && marzData.data.shouldGenerateVoucher) {
-              // Generate voucher for successful payment
-              const voucher = generateVoucher(payment.amount);
-              console.log(`🎫 Generated voucher: ${voucher} for amount: ${payment.amount}`);
-              
-              // Update payment status with voucher
-             await updatePaymentStatus(reference, "successful", voucher);
-              
-              return Response.json({
-                success: true,
-                data: {
-                  status: "successful",
-                  voucher: voucher,
-                  amount: payment.amount,
-                  phone: payment.phone,
-                  completedAt: new Date().toISOString()
-                }
-              });
+              // Fetch an unused voucher for the amount from Firestore and mark as used
+              const vouchersRef = collection(db, "vouchers");
+              const q = query(
+                vouchersRef,
+                where("amount", "==", payment.amount),
+                where("used", "==", false),
+                limit(1)
+              );
+              const snapshot = await getDocs(q);
+
+              if (!snapshot.empty) {
+                const voucherDoc = snapshot.docs[0];
+                const voucherData = voucherDoc.data();
+
+                await updateDoc(doc(db, "vouchers", voucherDoc.id), {
+                  used: true,
+                  assignedTo: payment.phone,
+                  assignedAt: new Date(),
+                });
+
+                // Update payment status with voucher code
+                await updatePaymentStatus(reference, "successful", voucherData.code);
+
+                return Response.json({
+                  success: true,
+                  data: {
+                    status: "successful",
+                    voucher: voucherData.code,
+                    amount: payment.amount,
+                    phone: payment.phone,
+                    completedAt: new Date().toISOString(),
+                  },
+                });
+              } else {
+                console.warn("No available vouchers in Firestore for amount:", payment.amount);
+                // Update status successful without voucher; client may fallback to /api/get-voucher
+                await updatePaymentStatus(reference, "successful");
+                return Response.json({
+                  success: true,
+                  data: {
+                    status: "successful",
+                    voucher: null,
+                    amount: payment.amount,
+                    phone: payment.phone,
+                  },
+                });
+              }
             } else if (marzData.data.internalStatus === 'failed') {
               // Update payment status to failed
               await updatePaymentStatus(reference, "failed");
@@ -143,10 +175,4 @@ export async function GET() {
   return Response.json({ success: true, message: "check-payment alive" });
 }
 
-// Voucher generation function
-function generateVoucher(amount) {
-  const prefixMap = { 1000: "V1000", 1500: "V1500", 7000: "V7000" };
-  const prefix = prefixMap[amount] || "VXXXX";
-  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `${prefix}-${rand}`;
-}
+// Voucher generation removed; issuing from Firestore inventory instead.

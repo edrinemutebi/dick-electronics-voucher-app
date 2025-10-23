@@ -562,31 +562,7 @@ export async function POST(request) {
     const status = response.data.data?.transaction?.status;
     console.log("Transaction status:", status);
 
-    // ✅ If payment successful → fetch voucher from Firebase
-    if (status === "successful" || status === "success") {
-      const voucher = await getVoucher(amount);
-
-      if (!voucher)
-        return Response.json({
-          success: false,
-          message:
-            "Payment completed but no voucher available right now. Please contact support with reference.",
-          reference,
-          transactionUuid: transactionId, // ✅ ADDED
-        });
-
-      return Response.json({
-        success: true,
-        data: {
-          paymentResponse: response.data,
-          voucher,
-          reference,
-          transactionUuid: transactionId, // ✅ ADDED
-        },
-      });
-    }
-
-    // ✅ If still pending
+    // ✅ Always return reference; voucher will be issued after confirmation via polling/webhooks
     return Response.json({
       success: true,
       message: `Payment initiated successfully. Status: ${status}. Please wait for confirmation.`,

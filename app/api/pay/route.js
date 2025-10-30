@@ -494,6 +494,58 @@ export const runtime = "nodejs";
 import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
 import { storePendingPayment, getVoucher } from "../../lib/storage.js";
+import { db } from "../../lib/firebase.js";
+import { collection, query, where, getDocs } from "firebase/firestore";
+
+// Helper function to send admin SMS alert
+async function sendAdminAlert(message) {
+  try {
+    console.log("🚨 Sending admin alert:", message);
+    const adminPhone = "256782830524";
+    
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'https://dick-electronics-voucher-app.vercel.app'}/api/send-sms`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        number: adminPhone, 
+        message: message 
+      }),
+    });
+    
+    if (response.ok) {
+      console.log("✅ Admin alert sent successfully");
+    } else {
+      console.error("❌ Failed to send admin alert");
+    }
+  } catch (error) {
+    console.error("❌ Error sending admin alert:", error);
+  }
+}
+
+// Helper function to check voucher availability
+async function checkVoucherAvailability(amount) {
+  try {
+    console.log(`🔍 Checking voucher availability for amount: ${amount}`);
+    
+    const vouchersRef = collection(db, "vouchers");
+    const q = query(
+      vouchersRef, 
+      where("amount", "==", amount), 
+      where("used", "==", false)
+    );
+    
+    const snapshot = await getDocs(q);
+    const availableCount = snapshot.size;
+    
+    console.log(`📊 Available vouchers for ${amount}: ${availableCount}`);
+    
+    return availableCount > 0;
+  } catch (error) {
+    console.error("❌ Error checking voucher availability:", error);
+    // If we can't check, assume vouchers exist to avoid blocking legitimate transactions
+    return true;
+  }
+}
 
 export async function POST(request) {
   try {
@@ -519,7 +571,6 @@ export async function POST(request) {
 
     console.log("Formatted phone:", formattedPhone);
 
-
     // ✅ Validate amount range
     if (amount < 500 || amount > 10000000)
       return Response.json(
@@ -529,6 +580,25 @@ export async function POST(request) {
         },
         { status: 400 }
       );
+
+    // ✅ CHECK VOUCHER AVAILABILITY BEFORE PROCESSING PAYMENT
+    const vouchersAvailable = await checkVoucherAvailability(amount);
+    
+    if (!vouchersAvailable) {
+      console.error("🚫 No vouchers available in system for amount:", amount);
+      
+      // Send admin alert
+      await sendAdminAlert("No Vouchers in System VS001");
+      
+      return Response.json(
+        {
+          success: false,
+          message: "System Error E77, Please contact Admin",
+          errorCode: "E77"
+        },
+        { status: 503 } // Service Unavailable
+      );
+    }
 
     const MARZ_API_URL =
       process.env.MARZ_API_BASE_URL ||

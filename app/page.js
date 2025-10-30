@@ -24,6 +24,13 @@ export default function Home() {
   const [debugMode, setDebugMode] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [pollingInterval, setPollingInterval] = useState(null);
+  const [countdown, setCountdown] = useState(100);
+  const countdownIntervalRef = useRef(null);
+  const [activeTab, setActiveTab] = useState("buy"); // "buy" or "history"
+  const [historyPhone, setHistoryPhone] = useState("");
+  const [voucherHistory, setVoucherHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historyError, setHistoryError] = useState("");
 
   // Phone number validation for Uganda
   const validatePhoneNumber = (phone) => {
@@ -65,19 +72,68 @@ export default function Home() {
       clearInterval(pollingInterval);
       setPollingInterval(null);
     }
+    // Stop countdown timer
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
     setPaymentReference(null);
   };
+
+  // Start countdown timer
+  const startCountdown = () => {
+    // Clear any existing countdown
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+    }
+    
+    setCountdown(100); // Reset to 100 seconds
+    
+    countdownIntervalRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          // Countdown complete - trigger payment failure
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+          
+          // Stop polling
+          if (pollingInterval) {
+            clearInterval(pollingInterval);
+            setPollingInterval(null);
+          }
+          
+          // Set error and reset state
+          setError("Payment timeout. Transaction failed. Please try again.");
+          setPaymentReference(null);
+          setStatusMessage("");
+          setLoading(false);
+          
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000); // Update every second
+  };
+
+  // Cleanup countdown on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+      }
+    };
+  }, []);
 
   const formatPhoneNumber = (phone) => {
     const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
     if (cleanPhone.startsWith('0')) {
-      return `256${cleanPhone.substring(1)}`;
+      return `+256${cleanPhone.substring(1)}`;
     } else if (cleanPhone.startsWith('256')) {
-      return cleanPhone;
+      return `+${cleanPhone}`;
     } else if (cleanPhone.startsWith('+256')) {
-      return cleanPhone.substring(1);
+      return cleanPhone;
     }
-    return cleanPhone;
+    return `+256${cleanPhone}`;
   };
 
 
@@ -109,23 +165,38 @@ export default function Home() {
       if (status === "successful") {
         console.log("✅ Payment marked successful, fetching voucher...");
 
+        // Check if voucher already set to prevent duplicate processing
+        if (voucherRef.current) {
+          console.log("⚠️ Voucher already set, skipping duplicate processing");
+          return true;
+        }
+
         // If API already returned a voucher, use it directly
         if (data.data && data.data.voucher) {
           setVoucherOnce(data.data.voucher);
           setMessage("Payment completed! Your voucher is ready.");
           setPaymentReference(null);
 
-          // ✅ Save successful transaction to Firestore
+          // ✅ Save successful transaction to Firestore (only if not already saved)
           try {
-            await addDoc(collection(db, "transactions"), {
-              phone,
-              amount,
-              voucher: data.data.voucher,
-              status: "successful",
-              reference,
-              createdAt: new Date(),
-            });
-            console.log("✅ Transaction saved to Firestore");
+            const { collection: fsCollection, query, where, getDocs } = await import("firebase/firestore");
+            const transactionsRef = fsCollection(db, "transactions");
+            const q = query(transactionsRef, where("reference", "==", reference));
+            const snapshot = await getDocs(q);
+            
+            if (snapshot.empty) {
+              await addDoc(fsCollection(db, "transactions"), {
+                phone,
+                amount,
+                voucher: data.data.voucher,
+                status: "successful",
+                reference,
+                createdAt: new Date(),
+              });
+              console.log("✅ Transaction saved to Firestore");
+            } else {
+              console.log("⚠️ Transaction already exists, skipping duplicate save");
+            }
           } catch (fireErr) {
             console.error("❌ Failed to save transaction:", fireErr);
           }
@@ -136,7 +207,7 @@ export default function Home() {
         const voucherRes = await fetch("/api/get-voucher", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount, phone }),
+          body: JSON.stringify({ amount, phone, reference }),
         });
 
         const voucherData = await voucherRes.json();
@@ -146,17 +217,26 @@ export default function Home() {
           setMessage("Payment completed! Your voucher is ready.");
           setPaymentReference(null); // clear after completion
 
-          // ✅ Save successful transaction to Firestore
+          // ✅ Save successful transaction to Firestore (only if not already saved)
           try {
-            await addDoc(collection(db, "transactions"), {
-              phone,
-              amount,
-              voucher: voucherData.voucher,
-              status: "successful",
-              reference,
-              createdAt: new Date(),
-            });
-            console.log("✅ Transaction saved to Firestore");
+            const { collection: fsCollection, query, where, getDocs } = await import("firebase/firestore");
+            const transactionsRef = fsCollection(db, "transactions");
+            const q = query(transactionsRef, where("reference", "==", reference));
+            const snapshot = await getDocs(q);
+            
+            if (snapshot.empty) {
+              await addDoc(fsCollection(db, "transactions"), {
+                phone,
+                amount,
+                voucher: voucherData.voucher,
+                status: "successful",
+                reference,
+                createdAt: new Date(),
+              });
+              console.log("✅ Transaction saved to Firestore");
+            } else {
+              console.log("⚠️ Transaction already exists, skipping duplicate save");
+            }
           } catch (fireErr) {
             console.error("❌ Failed to save transaction:", fireErr);
           }
@@ -173,16 +253,25 @@ export default function Home() {
         setError("Payment failed. Please try again.");
         setPaymentReference(null);
 
-        // Optionally save failed attempt
+        // Optionally save failed attempt (with duplicate check)
         try {
-          await addDoc(collection(db, "transactions"), {
-            phone,
-            amount,
-            status: "failed",
-            reference,
-            createdAt: new Date(),
-          });
-          console.log("⚠️ Failed transaction recorded in Firestore.");
+          const { collection: fsCollection, query, where, getDocs } = await import("firebase/firestore");
+          const transactionsRef = fsCollection(db, "transactions");
+          const q = query(transactionsRef, where("reference", "==", reference));
+          const snapshot = await getDocs(q);
+          
+          if (snapshot.empty) {
+            await addDoc(fsCollection(db, "transactions"), {
+              phone,
+              amount,
+              status: "failed",
+              reference,
+              createdAt: new Date(),
+            });
+            console.log("⚠️ Failed transaction recorded in Firestore.");
+          } else {
+            console.log("⚠️ Failed transaction already exists, skipping duplicate save");
+          }
         } catch (fireErr) {
           console.error("❌ Failed to record failed transaction:", fireErr);
         }
@@ -217,9 +306,12 @@ export default function Home() {
       clearInterval(pollingInterval);
     }
     
+    // Start the 90-second countdown
+    startCountdown();
+    
     setStatusMessage("Payment initiated, waiting for confirmation...");
     let pollCount = 0;
-    const maxPolls = 60; // 30 * 2 seconds = 60 seconds max
+    const maxPolls = 50; // 50 * 2 seconds = 100 seconds max (aligned with countdown)
     let pollingActive = true; // Flag to control polling
     
     const pollInterval = setInterval(async () => {
@@ -259,10 +351,16 @@ export default function Home() {
         pollingActive = false;
         clearInterval(pollInterval);
         setPollingInterval(null);
+        // Stop countdown timer
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+        }
         if (paymentReference === reference) {
-          setError("Payment timeout after 60 seconds. Please check your phone for payment confirmation or try again.");
+          setError("Payment timeout. Transaction failed. Please try again.");
           setPaymentReference(null);
-          setStatusMessage("Payment timeout - please try again");
+          setStatusMessage("");
+          setLoading(false);
           // Trigger failed status in storage
           updatePaymentStatus(reference, "failed");
         }
@@ -272,22 +370,28 @@ export default function Home() {
     // Store the interval for cleanup
     setPollingInterval(pollInterval);
 
-    // Stop polling after 60 seconds - backup timeout
+    // Stop polling after 100 seconds - backup timeout (aligned with countdown)
     setTimeout(() => {
       if (pollingActive) {
         console.log(`⏰ Backup timeout reached for reference: ${reference}`);
         pollingActive = false;
         clearInterval(pollInterval);
         setPollingInterval(null);
+        // Stop countdown timer
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+        }
         if (paymentReference === reference) {
-          setError("Payment timeout after 60 seconds. Please check your phone for payment confirmation or try again.");
+          setError("Payment timeout. Transaction failed. Please try again.");
           setPaymentReference(null);
-          setStatusMessage("Payment timeout - please try again");
+          setStatusMessage("");
+          setLoading(false);
           // Trigger failed status in storage
           updatePaymentStatus(reference, "failed");
         }
       }
-    }, 60000); // 60 seconds timeout
+    }, 100000); // 100 seconds timeout
   };
 
   const simulateFailedPayment = async () => {
@@ -311,6 +415,100 @@ export default function Home() {
     } catch (err) {
       setError("Error simulating payment failure");
     }
+  };
+
+  // Reset to buy another voucher
+  const resetToBuyAnother = () => {
+    setVoucher(null);
+    setPaymentReference(null);
+    setError("");
+    setMessage("");
+    setStatusMessage("");
+    setPhone("");
+    setAmount(1000);
+    setSmsSent(false);
+    smsLockRef.current = false;
+    voucherRef.current = null;
+    setCountdown(100);
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      setPollingInterval(null);
+    }
+  };
+
+  // Fetch voucher history
+  const fetchVoucherHistory = async () => {
+    setHistoryError("");
+    setVoucherHistory([]);
+    
+    if (!historyPhone.trim()) {
+      setHistoryError("Please enter a phone number");
+      return;
+    }
+
+    if (!validatePhoneNumber(historyPhone)) {
+      setHistoryError("Please enter a valid Ugandan phone number");
+      return;
+    }
+
+    setLoadingHistory(true);
+
+    try {
+      const formattedPhone = formatPhoneNumber(historyPhone);
+      
+      // Query Firestore for completed vouchers with this phone number
+      const { collection, query, where, getDocs, orderBy } = await import("firebase/firestore");
+      const completedVouchersRef = collection(db, "completedVouchers");
+      const q = query(
+        completedVouchersRef,
+        where("phone", "==", formattedPhone),
+        orderBy("createdAt", "desc")
+      );
+      
+      const snapshot = await getDocs(q);
+      
+      if (snapshot.empty) {
+        setHistoryError("No vouchers found for this phone number");
+        setLoadingHistory(false);
+        return;
+      }
+
+      const history = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          voucher: data.voucher,
+          amount: data.amount,
+          createdAt: data.createdAt?.toDate() || new Date(),
+          reference: data.reference
+        };
+      });
+
+      setVoucherHistory(history);
+    } catch (err) {
+      console.error("Error fetching history:", err);
+      setHistoryError("Failed to load voucher history. Please try again.");
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  // Helper to check if date is today
+  const isToday = (date) => {
+    const today = new Date();
+    return date.getDate() === today.getDate() &&
+           date.getMonth() === today.getMonth() &&
+           date.getFullYear() === today.getFullYear();
+  };
+
+  // Format date for display
+  const formatDate = (date) => {
+    const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    return date.toLocaleDateString('en-US', options);
   };
 
   const handlePayment = async () => {
@@ -353,11 +551,18 @@ export default function Home() {
         body: JSON.stringify({ phone: formattedPhone, amount }),
       });
 
+      const data = await res.json();
+      
+      // Check for special error E77 (no vouchers available)
+      if (!res.ok && data.errorCode === "E77") {
+        setError(data.message); // "System Error E77, Please contact Admin"
+        setLoading(false);
+        return;
+      }
+
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
       }
-
-      const data = await res.json();
       
       if (data.success) {
         // Only set voucher if it exists (payment was successful)
@@ -466,7 +671,7 @@ export default function Home() {
             textAlign: "center" 
           }}>
             <h1 style={{ 
-              margin: 0, 
+              margin: "0 0 1.5rem 0", 
               fontSize: "1.5rem", 
               lineHeight: 1.3,
               fontWeight: "bold",
@@ -474,10 +679,53 @@ export default function Home() {
             }}>
               BUY VOUCHER USING MOBILE MONEY
             </h1>
+
+            {/* Tabs */}
+            <div style={{
+              display: "flex",
+              width: "100%",
+              borderBottom: "2px solid #e9ecef",
+              marginBottom: "1.5rem"
+            }}>
+              <button
+                onClick={() => setActiveTab("buy")}
+                style={{
+                  flex: 1,
+                  padding: "0.75rem",
+                  backgroundColor: "transparent",
+                  border: "none",
+                  borderBottom: activeTab === "buy" ? "3px solid #7652AF" : "3px solid transparent",
+                  color: activeTab === "buy" ? "#7652AF" : "#666",
+                  fontWeight: activeTab === "buy" ? "700" : "500",
+                  fontSize: "1rem",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease"
+                }}
+              >
+                Buy
+              </button>
+              <button
+                onClick={() => setActiveTab("history")}
+                style={{
+                  flex: 1,
+                  padding: "0.75rem",
+                  backgroundColor: "transparent",
+                  border: "none",
+                  borderBottom: activeTab === "history" ? "3px solid #7652AF" : "3px solid transparent",
+                  color: activeTab === "history" ? "#7652AF" : "#666",
+                  fontWeight: activeTab === "history" ? "700" : "500",
+                  fontSize: "1rem",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease"
+                }}
+              >
+                History
+              </button>
+            </div>
           </div>
 
-          {/* Form Fields - Hidden when processing or voucher received */}
-          {!paymentReference && !voucher && (
+          {/* Buy Tab Content */}
+          {activeTab === "buy" && !paymentReference && !voucher && (
             <div style={{ width: "100%" }}>
               {/* Phone Number Input */}
               <div style={{ marginBottom: "1.5rem" }}>
@@ -763,15 +1011,36 @@ export default function Home() {
                 alignItems: "center",
                 marginBottom: "2rem"
               }}>
+                {/* Spinner with Countdown Inside */}
                 <div style={{
-                  width: "60px",
-                  height: "60px",
-                  border: "5px solid #e9ecef",
-                  borderTop: "5px solid #7652AF",
-                  borderRadius: "50%",
-                  animation: "spin 1s linear infinite",
+                  position: "relative",
+                  width: "120px",
+                  height: "120px",
                   marginBottom: "2rem"
-                }}></div>
+                }}>
+                  <div style={{
+                    position: "absolute",
+                    width: "100%",
+                    height: "100%",
+                    border: "6px solid #e9ecef",
+                    borderTop: "6px solid #7652AF",
+                    borderRadius: "50%",
+                    animation: "spin 1s linear infinite"
+                  }}></div>
+                  <div style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    fontSize: "2rem",
+                    fontWeight: "bold",
+                    color: countdown <= 10 ? "#ff4444" : "#7652AF",
+                    fontFamily: "monospace"
+                  }}>
+                    {countdown}
+                  </div>
+                </div>
+                
                 <div style={{
                   display: "flex",
                   alignItems: "center",
@@ -816,7 +1085,7 @@ export default function Home() {
               </div>
               
               <p style={{ 
-                margin: 0, 
+                margin: "0 0 1.5rem 0", 
                 fontSize: "1rem",
                 color: "#6c757d",
                 textAlign: "center"
@@ -827,7 +1096,7 @@ export default function Home() {
               {/* Status Message */}
               {statusMessage && (
                 <div style={{
-                  marginTop: "1.5rem",
+                  marginTop: "0.5rem",
                   padding: "1rem",
                   backgroundColor: "#fff3cd",
                   color: "#856404",
@@ -906,7 +1175,7 @@ export default function Home() {
               </div>
               
               <p style={{ 
-                margin: 0, 
+                margin: "0 0 2rem 0", 
                 fontSize: "0.875rem", 
                 color: "#666",
                 textAlign: "center",
@@ -914,6 +1183,152 @@ export default function Home() {
               }}>
                 Save this code! You can use it to purchase items at Dick Electronics.
               </p>
+
+              {/* Buy Another Voucher Button */}
+              <button
+                onClick={resetToBuyAnother}
+                style={{
+                  padding: "0.875rem 2rem",
+                  background: "linear-gradient(135deg, #D93F87 0%, #7652AF 100%)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontSize: "1rem",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  transition: "all 0.3s ease",
+                  boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)"
+                }}
+              >
+                Buy Another Voucher
+              </button>
+            </div>
+          )}
+
+          {/* History Tab Content */}
+          {activeTab === "history" && (
+            <div style={{ width: "100%" }}>
+              {/* Phone Number Input for History */}
+              <div style={{ marginBottom: "1.5rem" }}>
+                <label style={{ 
+                  display: "block", 
+                  marginBottom: "0.5rem", 
+                  fontSize: "0.875rem",
+                  fontWeight: "600",
+                  color: "#333"
+                }}>
+                  Enter Phone Number
+                </label>
+                <input
+                  type="tel"
+                  placeholder="0701234567 or +256701234567"
+                  value={historyPhone}
+                  onChange={(e) => {
+                    setHistoryPhone(e.target.value);
+                    setHistoryError("");
+                  }}
+                  style={{ 
+                    padding: "0.75rem", 
+                    width: "100%",
+                    border: historyError ? "2px solid #ff4444" : "2px solid #ddd",
+                    borderRadius: "8px",
+                    fontSize: "1rem",
+                    boxSizing: "border-box"
+                  }}
+                />
+                {historyError && (
+                  <p style={{ 
+                    color: "#ff4444", 
+                    fontSize: "0.875rem", 
+                    marginTop: "0.5rem",
+                    marginBottom: 0
+                  }}>
+                    {historyError}
+                  </p>
+                )}
+              </div>
+
+              {/* View Button */}
+              <button
+                onClick={fetchVoucherHistory}
+                disabled={loadingHistory}
+                style={{
+                  padding: "0.875rem",
+                  width: "100%",
+                  background: loadingHistory ? "#ccc" : "linear-gradient(135deg, #D93F87 0%, #7652AF 100%)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontSize: "1rem",
+                  fontWeight: "600",
+                  cursor: loadingHistory ? "not-allowed" : "pointer",
+                  marginBottom: "1.5rem"
+                }}
+              >
+                {loadingHistory ? "Loading..." : "View"}
+              </button>
+
+              {/* Voucher History List */}
+              {voucherHistory.length > 0 && (
+                <div style={{ width: "100%" }}>
+                  <h3 style={{ 
+                    fontSize: "1rem", 
+                    fontWeight: "600", 
+                    color: "#333",
+                    marginBottom: "1rem"
+                  }}>
+                    Voucher History
+                  </h3>
+                  <div style={{ 
+                    display: "flex", 
+                    flexDirection: "column", 
+                    gap: "0.75rem" 
+                  }}>
+                    {voucherHistory.map((item) => (
+                      <div 
+                        key={item.id}
+                        style={{
+                          padding: "1rem",
+                          background: isToday(item.createdAt) 
+                            ? "linear-gradient(135deg, #28a745 0%, #20c997 100%)" 
+                            : "linear-gradient(135deg, #44328D 0%, #7652AF 100%)",
+                          borderRadius: "8px",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          color: "white"
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <div style={{ 
+                            fontSize: "0.75rem", 
+                            marginBottom: "0.25rem",
+                            opacity: 0.9
+                          }}>
+                            {formatDate(item.createdAt)}
+                          </div>
+                          <div style={{ 
+                            fontSize: "1.125rem", 
+                            fontWeight: "700",
+                            letterSpacing: "0.05em"
+                          }}>
+                            {item.voucher}
+                          </div>
+                        </div>
+                        <div style={{
+                          fontSize: "0.875rem",
+                          fontWeight: "600",
+                          backgroundColor: "rgba(255, 255, 255, 0.2)",
+                          padding: "0.375rem 0.75rem",
+                          borderRadius: "6px"
+                        }}>
+                          UGX {item.amount.toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -74,6 +74,34 @@ export async function POST(request) {
             
             // Update our storage with the new status
             if (marzData.data.internalStatus === 'successful' && marzData.data.shouldGenerateVoucher) {
+              // 🔒 First check if this phone already has a voucher assigned for this amount
+              const assignedQuery = query(
+                collection(db, "vouchers"),
+                where("amount", "==", payment.amount),
+                where("assignedTo", "==", payment.phone),
+                where("used", "==", true),
+                limit(1)
+              );
+              const assignedSnapshot = await getDocs(assignedQuery);
+              
+              if (!assignedSnapshot.empty) {
+                const existingVoucher = assignedSnapshot.docs[0].data();
+                console.log("⚠️ Voucher already assigned to this phone, returning existing:", existingVoucher.code);
+                
+                await updatePaymentStatus(reference, "successful", existingVoucher.code);
+                
+                return Response.json({
+                  success: true,
+                  data: {
+                    status: "successful",
+                    voucher: existingVoucher.code,
+                    amount: payment.amount,
+                    phone: payment.phone,
+                    completedAt: new Date().toISOString(),
+                  },
+                });
+              }
+              
               // Fetch an unused voucher for the amount from Firestore and mark as used
               const vouchersRef = collection(db, "vouchers");
               const q = query(
@@ -92,11 +120,13 @@ export async function POST(request) {
                   used: true,
                   assignedTo: payment.phone,
                   assignedAt: new Date(),
+                  reference: reference,
                 });
 
                 // Update payment status with voucher code
                 await updatePaymentStatus(reference, "successful", voucherData.code);
 
+                console.log("✅ Voucher assigned:", voucherData.code, "to phone:", payment.phone);
                 return Response.json({
                   success: true,
                   data: {

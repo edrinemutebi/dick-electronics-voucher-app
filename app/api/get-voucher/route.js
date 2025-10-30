@@ -9,7 +9,25 @@ import { collection, query, where, limit, getDocs, updateDoc, doc } from "fireba
 
 export async function POST(request) {
   try {
-    const { amount, phone } = await request.json();
+    const { amount, phone, reference } = await request.json();
+
+    // 🔒 First check if this phone/reference already has a voucher assigned
+    if (phone) {
+      const assignedQuery = query(
+        collection(db, "vouchers"),
+        where("amount", "==", amount),
+        where("assignedTo", "==", phone),
+        where("used", "==", true),
+        limit(1)
+      );
+      const assignedSnapshot = await getDocs(assignedQuery);
+      
+      if (!assignedSnapshot.empty) {
+        const existingVoucher = assignedSnapshot.docs[0].data();
+        console.log("⚠️ Voucher already assigned to this phone, returning existing:", existingVoucher.code);
+        return new Response(JSON.stringify({ success: true, voucher: existingVoucher.code }), { status: 200 });
+      }
+    }
 
     // 1️⃣ Get an unused voucher matching amount
     const vouchersRef = collection(db, "vouchers");
@@ -28,8 +46,10 @@ export async function POST(request) {
       used: true,
       assignedTo: phone,
       assignedAt: new Date(),
+      reference: reference || null,
     });
 
+    console.log("✅ Voucher assigned:", voucherData.code, "to phone:", phone);
     return new Response(JSON.stringify({ success: true, voucher: voucherData.code }), { status: 200 });
   } catch (err) {
     console.error("Error fetching voucher:", err);

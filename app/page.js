@@ -518,55 +518,157 @@ export default function Home() {
               )}
             </div>
 
-            {/* Voucher Duration Select */}
+            {/* Voucher Options */}
             <div style={{ marginBottom: "1.5rem" }}>
               <label style={{ 
                 display: "block", 
-                marginBottom: "0.5rem", 
+                marginBottom: "1rem", 
                 fontSize: "0.875rem",
                 fontWeight: "600",
                 color: "#333"
               }}>
-                Voucher Duration
+                Voucher Options
               </label>
-              <select
-                value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
-                style={{ 
-                  padding: "0.75rem", 
-                  width: "100%",
-                  border: "2px solid #ddd",
+              
+              {/* Voucher Option Buttons */}
+              <div style={{ 
+                display: "flex", 
+                flexDirection: "column", 
+                gap: "0.75rem" 
+              }}>
+                {/* Daily 12hrs - 1000 */}
+                <div style={{ 
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "1rem", 
+                  background: "linear-gradient(135deg, #D93F87 0%, #44328D 100%)",
                   borderRadius: "8px",
-                  fontSize: "1rem",
-                  boxSizing: "border-box",
-                  backgroundColor: "white"
-                }}
-              >
-                <option value={1000}>Voucher UGX 1,000</option>
-                <option value={1500}>Voucher UGX 1,500</option>
-                <option value={7000}>Voucher UGX 7,000</option>
-              </select>
-            </div>
+                  width: "100%"
+                }}>
+                  <div style={{ color: "white", textAlign: "left" }}>
+                    <div style={{ fontSize: "0.875rem", fontWeight: "500" }}>DAILY 12HRS</div>
+                    <div style={{ fontSize: "1rem", fontWeight: "600", marginTop: "0.25rem" }}>UGX 1,000</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (!phone.trim()) {
+                        setError("Please enter a phone number");
+                        return;
+                      }
+                      if (!validatePhoneNumber(phone)) {
+                        setError("Please enter a valid Ugandan phone number");
+                        return;
+                      }
+                      setAmount(1000);
+                      handlePayment();
+                    }}
+                    disabled={loading || (paymentReference && !voucher)}
+                    style={{ 
+                      padding: "0.625rem 1.5rem",
+                      backgroundColor: "rgba(255, 255, 255, 0.2)",
+                      color: "white",
+                      border: "2px solid white",
+                      borderRadius: "6px",
+                      fontSize: "0.875rem",
+                      fontWeight: "700",
+                      cursor: (loading || (paymentReference && !voucher)) ? "not-allowed" : "pointer",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    BUY
+                  </button>
+                </div>
 
-            {/* Buy Voucher Button */}
-            <button
-              onClick={handlePayment}
-              disabled={loading || !phone.trim() || (paymentReference && !voucher)}
-              style={{ 
-                padding: "0.875rem 2rem", 
-                backgroundColor: (loading || (paymentReference && !voucher)) ? "#ccc" : "#007bff",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                fontSize: "1rem",
-                fontWeight: "600",
-                cursor: (loading || (paymentReference && !voucher)) ? "not-allowed" : "pointer",
-                width: "100%",
-                transition: "background-color 0.2s"
-              }}
-            >
-              {loading ? "Processing Payment..." : (paymentReference && !voucher) ? "Payment Processing..." : "Buy Voucher"}
-            </button>
+                {/* Daily 24hrs - 1500 */}
+                <div style={{ 
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "1rem", 
+                  background: "linear-gradient(135deg, #44328D 0%, #7652AF 100%)",
+                  borderRadius: "8px",
+                  width: "100%"
+                }}>
+                  <div style={{ color: "white", textAlign: "left" }}>
+                    <div style={{ fontSize: "0.875rem", fontWeight: "500" }}>DAILY 24HRS</div>
+                    <div style={{ fontSize: "1rem", fontWeight: "600", marginTop: "0.25rem" }}>UGX 1,500</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (!phone.trim()) {
+                        setError("Please enter a phone number");
+                        return;
+                      }
+                      if (!validatePhoneNumber(phone)) {
+                        setError("Please enter a valid Ugandan phone number");
+                        return;
+                      }
+                      setAmount(1500);
+                      handlePayment();
+                    }}
+                    disabled={loading || (paymentReference && !voucher)}
+                    style={{ 
+                      padding: "0.625rem 1.5rem",
+                      backgroundColor: "rgba(255, 255, 255, 0.2)",
+                      color: "white",
+                      border: "2px solid white",
+                      borderRadius: "6px",
+                      fontSize: "0.875rem",
+                      fontWeight: "700",
+                      cursor: (loading || (paymentReference && !voucher)) ? "not-allowed" : "pointer",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    BUY
+                  </button>
+                </div>
+
+                {/* Weekly - 7000 */}
+                <div style={{ 
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "1rem", 
+                  background: "linear-gradient(135deg, #352154 0%, #D93F87 100%)",
+                  borderRadius: "8px",
+                  width: "100%"
+                }}>
+                  <div style={{ color: "white", textAlign: "left" }}>
+                    <div style={{ fontSize: "0.875rem", fontWeight: "500" }}>WEEKLY</div>
+                    <div style={{ fontSize: "1rem", fontWeight: "600", marginTop: "0.25rem" }}>UGX 7,000</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (!phone.trim()) {
+                        setError("Please enter a phone number");
+                        return;
+                      }
+                      if (!validatePhoneNumber(phone)) {
+                        setError("Please enter a valid Ugandan phone number");
+                        return;
+                      }
+                      setAmount(7000);
+                      handlePayment();
+                    }}
+                    disabled={loading || (paymentReference && !voucher)}
+                    style={{ 
+                      padding: "0.625rem 1.5rem",
+                      backgroundColor: "rgba(255, 255, 255, 0.2)",
+                      color: "white",
+                      border: "2px solid white",
+                      borderRadius: "6px",
+                      fontSize: "0.875rem",
+                      fontWeight: "700",
+                      cursor: (loading || (paymentReference && !voucher)) ? "not-allowed" : "pointer",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    BUY
+                  </button>
+                </div>
+              </div>
+            </div>
 
             {/* Payment Providers */}
             <div style={{ 
@@ -603,6 +705,28 @@ export default function Home() {
                   style={{ width: "50px", height: "50px", objectFit: "cover", borderRadius: "4px" }} 
                 />
               </div>
+            </div>
+
+            {/* Help Contact */}
+            <div style={{ 
+              marginTop: "1.5rem", 
+              textAlign: "center",
+              width: "100%"
+            }}>
+              <p style={{ 
+                margin: "0 0 0.5rem 0", 
+                fontSize: "0.875rem", 
+                color: "#666"
+              }}>
+                For help call <a href="tel:0782830524" style={{ color: "#007bff", textDecoration: "none" }}>0782830524</a>
+              </p>
+              <p style={{ 
+                margin: 0, 
+                fontSize: "0.75rem", 
+                color: "#999"
+              }}>
+                Voucher System by AlphaCortex Systems
+              </p>
             </div>
           </div>
 

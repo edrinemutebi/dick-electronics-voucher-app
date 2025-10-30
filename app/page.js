@@ -435,288 +435,288 @@ export default function Home() {
           }
         }
       `}</style>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "2rem" }}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: "480px", marginBottom: "1rem", textAlign: "center" }}>
-        <h1 style={{ margin: 0, fontSize: "1.4rem", lineHeight: 1.2 }}>BUY VOUCHER USING MOBILE MONEY</h1>
-        <div style={{ marginTop: ".5rem" }}>
-          <Image src="/logox.png" alt="Dick Electronics" width={120} height={120} style={{ height: "auto", width: "90px", objectFit: "contain" }} />
-        </div>
-        {/* Debug button hidden */}
-        {/* <button
-          onClick={() => setDebugMode(!debugMode)}
-          style={{
-            padding: "0.5rem",
-            backgroundColor: debugMode ? "#dc3545" : "#6c757d",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            fontSize: "0.875rem",
-            cursor: "pointer"
-          }}
-        >
-          {debugMode ? "Hide Debug" : "Debug"}
-        </button> */}
-      </div>
-      
-      {/* Debug panel hidden */}
-      {/* {debugMode && (
-        <div style={{ 
-          width: "100%", 
-          maxWidth: "400px", 
-          marginBottom: "1rem", 
-          padding: "1rem", 
-          backgroundColor: "#f8f9fa", 
-          border: "1px solid #dee2e6", 
-          borderRadius: "4px",
-          fontSize: "0.875rem"
+      <div style={{ 
+        display: "flex", 
+        flexDirection: "column", 
+        alignItems: "center", 
+        justifyContent: "center",
+        minHeight: "100vh",
+        padding: "1rem",
+        backgroundColor: "#f5f5f5"
+      }}>
+        {/* Main Card */}
+        <div style={{
+          width: "100%",
+          maxWidth: "400px",
+          backgroundColor: "white",
+          borderRadius: "12px",
+          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+          padding: "2rem",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center"
         }}>
-          <h3 style={{ margin: "0 0 0.5rem 0", color: "#495057" }}>Debug Panel</h3>
-          <p><strong>Payment Reference:</strong> {paymentReference || "None"}</p>
-          <p><strong>Current Status:</strong> {paymentReference ? "Processing" : "No payment"}</p>
-          {paymentReference && (
-            <div style={{ marginTop: "0.5rem" }}>
-              <button
-                onClick={() => checkPaymentStatus(paymentReference)}
-                disabled={checkingPayment}
-                style={{
-                  padding: "0.25rem 0.5rem",
-                  marginRight: "0.5rem",
-                  backgroundColor: checkingPayment ? "#ccc" : "#007bff",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "4px",
-                  fontSize: "0.75rem",
-                  cursor: checkingPayment ? "not-allowed" : "pointer"
-                }}
-              >
-                {checkingPayment ? "Checking..." : "Check Status"}
-              </button>
-              <button
-                onClick={simulateFailedPayment}
-                style={{
-                  padding: "0.25rem 0.5rem",
-                  backgroundColor: "#dc3545",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "4px",
-                  fontSize: "0.75rem",
-                  cursor: "pointer"
-                }}
-              >
-                Simulate Failure
-              </button>
-            </div>
-          )}
-        </div>
-      )} */}
-      <input
-        type="tel"
-        placeholder="0701234567 or +256701234567"
-        value={phone}
-        onChange={(e) => {
-          setPhone(e.target.value);
-          setError("");
-        }}
-        style={{ 
-          margin: "1rem 0", 
-          padding: "0.75rem", 
-          width: "300px",
-          border: error ? "2px solid #ff4444" : "2px solid #ddd",
-          borderRadius: "4px",
-          fontSize: "1rem"
-        }}
-      />
-      {error && (
-        <p style={{ color: "#ff4444", fontSize: "0.875rem", marginTop: "0.25rem" }}>
-          {error}
-        </p>
-      )}
-        <select
-          value={amount}
-          onChange={(e) => setAmount(Number(e.target.value))}
-          style={{ marginBottom: "1rem", padding: "0.5rem", width: "300px" }}
-        >
-          <option value={1000}>Voucher UGX 1,000</option>
-          <option value={1500}>Voucher UGX 1,500</option>
-          <option value={7000}>Voucher UGX 7,000</option>
-        </select>
-      <button
-        onClick={handlePayment}
-        disabled={loading || !phone.trim() || (paymentReference && !voucher)}
-        style={{ 
-          padding: "0.75rem 2rem", 
-          backgroundColor: (loading || (paymentReference && !voucher)) ? "#ccc" : "#007bff",
-          color: "white",
-          border: "none",
-          borderRadius: "4px",
-          fontSize: "1rem",
-          cursor: (loading || (paymentReference && !voucher)) ? "not-allowed" : "pointer",
-          width: "300px"
-        }}
-      >
-        {loading ? "Processing Payment..." : (paymentReference && !voucher) ? "Payment Processing..." : "Pay Now"}
-      </button>
-      {message && !paymentReference && (
-        <div style={{ 
-          marginTop: "1rem", 
-          padding: "1rem", 
-          backgroundColor: "#d4edda", 
-          color: "#155724",
-          borderRadius: "4px",
-          width: "300px",
-          textAlign: "center"
-        }}>
-          {message}
-        </div>
-      )}
-      {paymentReference && !voucher && (
-        <div style={{ 
-          marginTop: "1rem", 
-          padding: "2rem", 
-          backgroundColor: "#f8f9fa", 
-          color: "#495057",
-          borderRadius: "8px",
-          width: "300px",
-          textAlign: "center",
-          border: "2px solid #e9ecef",
-          boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
-        }}>
-          {/* Loading Animation */}
+          {/* Header */}
           <div style={{ 
             display: "flex", 
             flexDirection: "column", 
-            alignItems: "center",
-            marginBottom: "1rem"
+            alignItems: "center", 
+            width: "100%", 
+            marginBottom: "2rem", 
+            textAlign: "center" 
           }}>
-            <div style={{
-              width: "40px",
-              height: "40px",
-              border: "4px solid #e9ecef",
-              borderTop: "4px solid #007bff",
-              borderRadius: "50%",
-              animation: "spin 1s linear infinite",
-              marginBottom: "1rem"
-            }}></div>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              fontSize: "1.1rem",
-              fontWeight: "500",
-              color: "#007bff"
+            <h1 style={{ 
+              margin: 0, 
+              fontSize: "1.5rem", 
+              lineHeight: 1.3,
+              fontWeight: "bold",
+              color: "#333"
             }}>
-              <span>Processing Payment</span>
-              <div style={{
-                display: "flex",
-                gap: "2px"
-              }}>
-                <div style={{
-                  width: "4px",
-                  height: "4px",
-                  backgroundColor: "#007bff",
-                  borderRadius: "50%",
-                  animation: "bounce 1.4s ease-in-out infinite both"
-                }}></div>
-                <div style={{
-                  width: "4px",
-                  height: "4px",
-                  backgroundColor: "#007bff",
-                  borderRadius: "50%",
-                  animation: "bounce 1.4s ease-in-out infinite both",
-                  animationDelay: "0.16s"
-                }}></div>
-                <div style={{
-                  width: "4px",
-                  height: "4px",
-                  backgroundColor: "#007bff",
-                  borderRadius: "50%",
-                  animation: "bounce 1.4s ease-in-out infinite both",
-                  animationDelay: "0.32s"
-                }}></div>
-              </div>
+              BUY VOUCHER USING MOBILE MONEY
+            </h1>
+            <div style={{ marginTop: "1rem" }}>
+              <Image 
+                src="/logox.png" 
+                alt="Dick Electronics" 
+                width={120} 
+                height={120} 
+                style={{ height: "auto", width: "90px", objectFit: "contain" }} 
+              />
             </div>
           </div>
+
+          {/* Form Fields */}
+          <div style={{ width: "100%" }}>
+            {/* Phone Number Input */}
+            <div style={{ marginBottom: "1.5rem" }}>
+              <label style={{ 
+                display: "block", 
+                marginBottom: "0.5rem", 
+                fontSize: "0.875rem",
+                fontWeight: "600",
+                color: "#333"
+              }}>
+                Enter Mobile Number
+              </label>
+              <input
+                type="tel"
+                placeholder="0701234567 or +256701234567"
+                value={phone}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  setError("");
+                }}
+                style={{ 
+                  padding: "0.75rem", 
+                  width: "100%",
+                  border: error ? "2px solid #ff4444" : "2px solid #ddd",
+                  borderRadius: "8px",
+                  fontSize: "1rem",
+                  boxSizing: "border-box"
+                }}
+              />
+              {error && (
+                <p style={{ 
+                  color: "#ff4444", 
+                  fontSize: "0.875rem", 
+                  marginTop: "0.5rem",
+                  marginBottom: 0
+                }}>
+                  {error}
+                </p>
+              )}
+            </div>
+
+            {/* Voucher Duration Select */}
+            <div style={{ marginBottom: "1.5rem" }}>
+              <label style={{ 
+                display: "block", 
+                marginBottom: "0.5rem", 
+                fontSize: "0.875rem",
+                fontWeight: "600",
+                color: "#333"
+              }}>
+                Voucher Duration
+              </label>
+              <select
+                value={amount}
+                onChange={(e) => setAmount(Number(e.target.value))}
+                style={{ 
+                  padding: "0.75rem", 
+                  width: "100%",
+                  border: "2px solid #ddd",
+                  borderRadius: "8px",
+                  fontSize: "1rem",
+                  boxSizing: "border-box",
+                  backgroundColor: "white"
+                }}
+              >
+                <option value={1000}>Voucher UGX 1,000</option>
+                <option value={1500}>Voucher UGX 1,500</option>
+                <option value={7000}>Voucher UGX 7,000</option>
+              </select>
+            </div>
+
+            {/* Buy Voucher Button */}
+            <button
+              onClick={handlePayment}
+              disabled={loading || !phone.trim() || (paymentReference && !voucher)}
+              style={{ 
+                padding: "0.875rem 2rem", 
+                backgroundColor: (loading || (paymentReference && !voucher)) ? "#ccc" : "#007bff",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                fontSize: "1rem",
+                fontWeight: "600",
+                cursor: (loading || (paymentReference && !voucher)) ? "not-allowed" : "pointer",
+                width: "100%",
+                transition: "background-color 0.2s"
+              }}
+            >
+              {loading ? "Processing Payment..." : (paymentReference && !voucher) ? "Payment Processing..." : "Buy Voucher"}
+            </button>
+          </div>
+
+          {/* Success Message */}
+          {message && !paymentReference && (
+            <div style={{ 
+              marginTop: "1.5rem", 
+              padding: "1rem", 
+              backgroundColor: "#d4edda", 
+              color: "#155724",
+              borderRadius: "8px",
+              width: "100%",
+              textAlign: "center"
+            }}>
+              {message}
+            </div>
+          )}
+
+          {/* Processing Payment Animation */}
+          {paymentReference && !voucher && (
+            <div style={{ 
+              marginTop: "1.5rem", 
+              padding: "2rem", 
+              backgroundColor: "#f8f9fa", 
+              color: "#495057",
+              borderRadius: "8px",
+              width: "100%",
+              textAlign: "center",
+              border: "2px solid #e9ecef"
+            }}>
+              <div style={{ 
+                display: "flex", 
+                flexDirection: "column", 
+                alignItems: "center",
+                marginBottom: "1rem"
+              }}>
+                <div style={{
+                  width: "40px",
+                  height: "40px",
+                  border: "4px solid #e9ecef",
+                  borderTop: "4px solid #007bff",
+                  borderRadius: "50%",
+                  animation: "spin 1s linear infinite",
+                  marginBottom: "1rem"
+                }}></div>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  fontSize: "1.1rem",
+                  fontWeight: "500",
+                  color: "#007bff"
+                }}>
+                  <span>Processing Payment</span>
+                  <div style={{
+                    display: "flex",
+                    gap: "2px"
+                  }}>
+                    <div style={{
+                      width: "4px",
+                      height: "4px",
+                      backgroundColor: "#007bff",
+                      borderRadius: "50%",
+                      animation: "bounce 1.4s ease-in-out infinite both"
+                    }}></div>
+                    <div style={{
+                      width: "4px",
+                      height: "4px",
+                      backgroundColor: "#007bff",
+                      borderRadius: "50%",
+                      animation: "bounce 1.4s ease-in-out infinite both",
+                      animationDelay: "0.16s"
+                    }}></div>
+                    <div style={{
+                      width: "4px",
+                      height: "4px",
+                      backgroundColor: "#007bff",
+                      borderRadius: "50%",
+                      animation: "bounce 1.4s ease-in-out infinite both",
+                      animationDelay: "0.32s"
+                    }}></div>
+                  </div>
+                </div>
+              </div>
+              
+              <p style={{ 
+                marginBottom: 0, 
+                fontSize: "0.9rem",
+                color: "#6c757d"
+              }}>
+                Please wait while we confirm your payment...
+              </p>
+            </div>
+          )}
           
-          <p style={{ 
-            marginBottom: "1rem", 
-            fontSize: "0.9rem",
-            color: "#6c757d"
-          }}>
-            Please wait while we confirm your payment...
-          </p>
-          
-          {/* Manual stop button */}
-          {/* <button
-            onClick={() => {
-              console.log("🛑 User manually stopped polling");
-              if (pollingInterval) {
-                clearInterval(pollingInterval);
-                setPollingInterval(null);
-              }
-              setPaymentReference(null);
-              setStatusMessage("");
-              setError("Payment processing stopped by user. You can try again if needed.");
-            }}
-            style={{
-              padding: "0.5rem 1rem",
-              backgroundColor: "#dc3545",
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
+          {/* Status Message */}
+          {paymentReference && !voucher && statusMessage && (
+            <div style={{
+              marginTop: "1rem",
+              padding: "0.75rem",
+              backgroundColor: "#fff3cd",
+              color: "#856404",
+              borderRadius: "8px",
+              width: "100%",
+              textAlign: "center",
               fontSize: "0.875rem",
-              cursor: "pointer",
-              transition: "all 0.2s ease"
-            }}
-          >
-            Stop Processing
-          </button> */}
+              border: "1px solid #ffeaa7"
+            }}>
+              {statusMessage}
+            </div>
+          )}
+          
+          {/* Voucher Display */}
+          {voucher && (
+            <div style={{ 
+              marginTop: "1.5rem", 
+              padding: "1.5rem", 
+              background: "#e0ffe0", 
+              borderRadius: "8px",
+              width: "100%",
+              textAlign: "center",
+              border: "2px solid #28a745"
+            }}>
+              <h2 style={{ marginBottom: "1rem", color: "#155724", fontSize: "1.25rem" }}>Your Voucher Code:</h2>
+              <p style={{ 
+                fontSize: "1.5rem", 
+                fontWeight: "bold", 
+                color: "#155724",
+                backgroundColor: "white",
+                padding: "1rem",
+                borderRadius: "8px",
+                border: "2px dashed #28a745",
+                margin: "0 0 1rem 0"
+              }}>
+                {voucher}
+              </p>
+              <p style={{ margin: 0, fontSize: "0.875rem", color: "#666" }}>
+                Save this code! You can use it to purchase items at Dick Electronics.
+              </p>
+            </div>
+          )}
         </div>
-      )}
-      
-      {/* Status message below processing card */}
-      {paymentReference && !voucher && statusMessage && (
-        <div style={{
-          marginTop: "0.5rem",
-          padding: "0.75rem",
-          backgroundColor: "#f8f9fa",
-          color: "#495057",
-          borderRadius: "6px",
-          width: "300px",
-          textAlign: "center",
-          fontSize: "0.875rem",
-          border: "1px solid #e9ecef"
-        }}>
-          {statusMessage}
-        </div>
-      )}
-      
-      {voucher && (
-        <div style={{ 
-          marginTop: "2rem", 
-          padding: "1.5rem", 
-          background: "#e0ffe0", 
-          borderRadius: "8px",
-          width: "300px",
-          textAlign: "center",
-          border: "2px solid #28a745"
-        }}>
-          <h2 style={{ marginBottom: "1rem", color: "#155724" }}>Your Voucher Code:</h2>
-          <p style={{ 
-            fontSize: "1.5rem", 
-            fontWeight: "bold", 
-            color: "#155724",
-            backgroundColor: "white",
-            padding: "1rem",
-            borderRadius: "4px",
-            border: "2px dashed #28a745"
-          }}>
-            {voucher}
-          </p>
-          <p style={{ marginTop: "1rem", fontSize: "0.875rem", color: "#666" }}>
-            Save this code! You can use it to purchase items at Dick Electronics.
-          </p>
-        </div>
-      )}
       </div>
     </>
   );

@@ -474,15 +474,6 @@ export default function Home() {
             }}>
               BUY VOUCHER USING MOBILE MONEY
             </h1>
-            <div style={{ marginTop: "1rem" }}>
-              <Image 
-                src="/logox.png" 
-                alt="Dick Electronics" 
-                width={120} 
-                height={120} 
-                style={{ height: "auto", width: "90px", objectFit: "contain" }} 
-              />
-            </div>
           </div>
 
           {/* Form Fields */}
@@ -576,6 +567,43 @@ export default function Home() {
             >
               {loading ? "Processing Payment..." : (paymentReference && !voucher) ? "Payment Processing..." : "Buy Voucher"}
             </button>
+
+            {/* Payment Providers */}
+            <div style={{ 
+              marginTop: "1rem", 
+              textAlign: "center",
+              width: "100%"
+            }}>
+              <p style={{ 
+                margin: "0 0 0.75rem 0", 
+                fontSize: "0.875rem", 
+                color: "#999",
+                fontWeight: "400"
+              }}>
+                We Accept MTN & Airtel
+              </p>
+              <div style={{ 
+                display: "flex", 
+                justifyContent: "center", 
+                alignItems: "center",
+                gap: "1.5rem"
+              }}>
+                <Image 
+                  src="/mtn.png" 
+                  alt="MTN Mobile Money" 
+                  width={50} 
+                  height={50} 
+                  style={{ width: "50px", height: "50px", objectFit: "cover", borderRadius: "4px" }} 
+                />
+                <Image 
+                  src="/airtel.png" 
+                  alt="Airtel Money" 
+                  width={50} 
+                  height={50} 
+                  style={{ width: "50px", height: "50px", objectFit: "cover", borderRadius: "4px" }} 
+                />
+              </div>
+            </div>
           </div>
 
           {/* Success Message */}

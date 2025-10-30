@@ -476,50 +476,51 @@ export default function Home() {
             </h1>
           </div>
 
-          {/* Form Fields */}
-          <div style={{ width: "100%" }}>
-            {/* Phone Number Input */}
-            <div style={{ marginBottom: "1.5rem" }}>
-              <label style={{ 
-                display: "block", 
-                marginBottom: "0.5rem", 
-                fontSize: "0.875rem",
-                fontWeight: "600",
-                color: "#333"
-              }}>
-                Enter Mobile Number
-              </label>
-              <input
-                type="tel"
-                placeholder="0701234567 or +256701234567"
-                value={phone}
-                onChange={(e) => {
-                  setPhone(e.target.value);
-                  setError("");
-                }}
-                style={{ 
-                  padding: "0.75rem", 
-                  width: "100%",
-                  border: error ? "2px solid #ff4444" : "2px solid #ddd",
-                  borderRadius: "8px",
-                  fontSize: "1rem",
-                  boxSizing: "border-box"
-                }}
-              />
-              {error && (
-                <p style={{ 
-                  color: "#ff4444", 
-                  fontSize: "0.875rem", 
-                  marginTop: "0.5rem",
-                  marginBottom: 0
+          {/* Form Fields - Hidden when processing or voucher received */}
+          {!paymentReference && !voucher && (
+            <div style={{ width: "100%" }}>
+              {/* Phone Number Input */}
+              <div style={{ marginBottom: "1.5rem" }}>
+                <label style={{ 
+                  display: "block", 
+                  marginBottom: "0.5rem", 
+                  fontSize: "0.875rem",
+                  fontWeight: "600",
+                  color: "#333"
                 }}>
-                  {error}
-                </p>
-              )}
-            </div>
+                  Enter Mobile Number
+                </label>
+                <input
+                  type="tel"
+                  placeholder="0701234567 or +256701234567"
+                  value={phone}
+                  onChange={(e) => {
+                    setPhone(e.target.value);
+                    setError("");
+                  }}
+                  style={{ 
+                    padding: "0.75rem", 
+                    width: "100%",
+                    border: error ? "2px solid #ff4444" : "2px solid #ddd",
+                    borderRadius: "8px",
+                    fontSize: "1rem",
+                    boxSizing: "border-box"
+                  }}
+                />
+                {error && (
+                  <p style={{ 
+                    color: "#ff4444", 
+                    fontSize: "0.875rem", 
+                    marginTop: "0.5rem",
+                    marginBottom: 0
+                  }}>
+                    {error}
+                  </p>
+                )}
+              </div>
 
-            {/* Voucher Options */}
-            <div style={{ marginBottom: "1.5rem" }}>
+              {/* Voucher Options */}
+              <div style={{ marginBottom: "1.5rem" }}>
               <label style={{ 
                 display: "block", 
                 marginBottom: "1rem", 
@@ -728,10 +729,11 @@ export default function Home() {
                 Voucher System by AlphaCortex Systems
               </p>
             </div>
-          </div>
+            </div>
+          )}
 
           {/* Success Message */}
-          {message && !paymentReference && (
+          {message && !paymentReference && !voucher && (
             <div style={{ 
               marginTop: "1.5rem", 
               padding: "1rem", 
@@ -745,65 +747,66 @@ export default function Home() {
             </div>
           )}
 
-          {/* Processing Payment Animation */}
+          {/* Processing Payment Animation - Full Screen */}
           {paymentReference && !voucher && (
             <div style={{ 
-              marginTop: "1.5rem", 
-              padding: "2rem", 
-              backgroundColor: "#f8f9fa", 
-              color: "#495057",
-              borderRadius: "8px",
-              width: "100%",
-              textAlign: "center",
-              border: "2px solid #e9ecef"
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "3rem 2rem",
+              width: "100%"
             }}>
               <div style={{ 
                 display: "flex", 
                 flexDirection: "column", 
                 alignItems: "center",
-                marginBottom: "1rem"
+                marginBottom: "2rem"
               }}>
                 <div style={{
-                  width: "40px",
-                  height: "40px",
-                  border: "4px solid #e9ecef",
-                  borderTop: "4px solid #007bff",
+                  width: "60px",
+                  height: "60px",
+                  border: "5px solid #e9ecef",
+                  borderTop: "5px solid #7652AF",
                   borderRadius: "50%",
                   animation: "spin 1s linear infinite",
-                  marginBottom: "1rem"
+                  marginBottom: "2rem"
                 }}></div>
                 <div style={{
                   display: "flex",
                   alignItems: "center",
                   gap: "0.5rem",
-                  fontSize: "1.1rem",
-                  fontWeight: "500",
-                  color: "#007bff"
+                  fontSize: "1.5rem",
+                  fontWeight: "600",
+                  background: "linear-gradient(135deg, #D93F87 0%, #7652AF 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text"
                 }}>
                   <span>Processing Payment</span>
                   <div style={{
                     display: "flex",
-                    gap: "2px"
+                    gap: "3px"
                   }}>
                     <div style={{
-                      width: "4px",
-                      height: "4px",
-                      backgroundColor: "#007bff",
+                      width: "6px",
+                      height: "6px",
+                      backgroundColor: "#7652AF",
                       borderRadius: "50%",
                       animation: "bounce 1.4s ease-in-out infinite both"
                     }}></div>
                     <div style={{
-                      width: "4px",
-                      height: "4px",
-                      backgroundColor: "#007bff",
+                      width: "6px",
+                      height: "6px",
+                      backgroundColor: "#7652AF",
                       borderRadius: "50%",
                       animation: "bounce 1.4s ease-in-out infinite both",
                       animationDelay: "0.16s"
                     }}></div>
                     <div style={{
-                      width: "4px",
-                      height: "4px",
-                      backgroundColor: "#007bff",
+                      width: "6px",
+                      height: "6px",
+                      backgroundColor: "#7652AF",
                       borderRadius: "50%",
                       animation: "bounce 1.4s ease-in-out infinite both",
                       animationDelay: "0.32s"
@@ -813,57 +816,102 @@ export default function Home() {
               </div>
               
               <p style={{ 
-                marginBottom: 0, 
-                fontSize: "0.9rem",
-                color: "#6c757d"
+                margin: 0, 
+                fontSize: "1rem",
+                color: "#6c757d",
+                textAlign: "center"
               }}>
                 Please wait while we confirm your payment...
               </p>
+              
+              {/* Status Message */}
+              {statusMessage && (
+                <div style={{
+                  marginTop: "1.5rem",
+                  padding: "1rem",
+                  backgroundColor: "#fff3cd",
+                  color: "#856404",
+                  borderRadius: "8px",
+                  width: "100%",
+                  maxWidth: "300px",
+                  textAlign: "center",
+                  fontSize: "0.875rem",
+                  border: "1px solid #ffeaa7"
+                }}>
+                  {statusMessage}
+                </div>
+              )}
             </div>
           )}
           
-          {/* Status Message */}
-          {paymentReference && !voucher && statusMessage && (
-            <div style={{
-              marginTop: "1rem",
-              padding: "0.75rem",
-              backgroundColor: "#fff3cd",
-              color: "#856404",
-              borderRadius: "8px",
-              width: "100%",
-              textAlign: "center",
-              fontSize: "0.875rem",
-              border: "1px solid #ffeaa7"
-            }}>
-              {statusMessage}
-            </div>
-          )}
-          
-          {/* Voucher Display */}
+          {/* Voucher Display - Full Screen */}
           {voucher && (
             <div style={{ 
-              marginTop: "1.5rem", 
-              padding: "1.5rem", 
-              background: "#e0ffe0", 
-              borderRadius: "8px",
-              width: "100%",
-              textAlign: "center",
-              border: "2px solid #28a745"
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "3rem 2rem",
+              width: "100%"
             }}>
-              <h2 style={{ marginBottom: "1rem", color: "#155724", fontSize: "1.25rem" }}>Your Voucher Code:</h2>
+              <div style={{
+                width: "80px",
+                height: "80px",
+                background: "linear-gradient(135deg, #28a745 0%, #20c997 100%)",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: "2rem"
+              }}>
+                <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              
+              <h2 style={{ 
+                marginBottom: "1.5rem", 
+                color: "#28a745", 
+                fontSize: "1.5rem",
+                fontWeight: "700",
+                textAlign: "center"
+              }}>
+                Payment Successful!
+              </h2>
+              
               <p style={{ 
-                fontSize: "1.5rem", 
+                marginBottom: "1rem", 
+                fontSize: "0.875rem", 
+                color: "#666",
+                textAlign: "center"
+              }}>
+                Your Voucher Code:
+              </p>
+              
+              <div style={{ 
+                fontSize: "2rem", 
                 fontWeight: "bold", 
-                color: "#155724",
-                backgroundColor: "white",
-                padding: "1rem",
-                borderRadius: "8px",
-                border: "2px dashed #28a745",
-                margin: "0 0 1rem 0"
+                color: "#28a745",
+                backgroundColor: "#e0ffe0",
+                padding: "1.5rem 2rem",
+                borderRadius: "12px",
+                border: "3px dashed #28a745",
+                marginBottom: "1.5rem",
+                letterSpacing: "0.1em",
+                textAlign: "center",
+                width: "100%",
+                maxWidth: "300px"
               }}>
                 {voucher}
-              </p>
-              <p style={{ margin: 0, fontSize: "0.875rem", color: "#666" }}>
+              </div>
+              
+              <p style={{ 
+                margin: 0, 
+                fontSize: "0.875rem", 
+                color: "#666",
+                textAlign: "center",
+                maxWidth: "280px"
+              }}>
                 Save this code! You can use it to purchase items at Dick Electronics.
               </p>
             </div>

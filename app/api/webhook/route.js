@@ -114,51 +114,32 @@ export async function POST(request) {
       console.log(`✅ Payment completed for reference: ${reference}`);
       
       // Fetch an unused voucher from Firestore and mark as used
-      if (amount && phoneNumber) {
-        // 🔒 First check if this phone already has a voucher assigned for this amount
-        const assignedQuery = query(
-          collection(db, "vouchers"),
+      if (amount) {
+        const vouchersRef = collection(db, "vouchers");
+        const q = query(
+          vouchersRef,
           where("amount", "==", amount),
-          where("assignedTo", "==", phoneNumber),
-          where("used", "==", true),
+          where("used", "==", false),
           limit(1)
         );
-        const assignedSnapshot = await getDocs(assignedQuery);
-        
-        if (!assignedSnapshot.empty) {
-          const existingVoucher = assignedSnapshot.docs[0].data();
-          voucher = existingVoucher.code;
-          console.log("⚠️ Voucher already assigned to this phone, returning existing:", voucher);
+        const snapshot = await getDocs(q);
+
+        if (!snapshot.empty) {
+          const voucherDoc = snapshot.docs[0];
+          const voucherData = voucherDoc.data();
+
+          await updateDoc(doc(db, "vouchers", voucherDoc.id), {
+            used: true,
+            assignedTo: phoneNumber || "",
+            assignedAt: new Date(),
+          });
+
+          voucher = voucherData.code;
           updatePaymentStatus(reference, "successful", voucher);
+          console.log(`🎫 Issued Firestore voucher: ${voucher} for amount: ${amount}`);
         } else {
-          // Fetch an unused voucher
-          const vouchersRef = collection(db, "vouchers");
-          const q = query(
-            vouchersRef,
-            where("amount", "==", amount),
-            where("used", "==", false),
-            limit(1)
-          );
-          const snapshot = await getDocs(q);
-
-          if (!snapshot.empty) {
-            const voucherDoc = snapshot.docs[0];
-            const voucherData = voucherDoc.data();
-
-            await updateDoc(doc(db, "vouchers", voucherDoc.id), {
-              used: true,
-              assignedTo: phoneNumber,
-              assignedAt: new Date(),
-              reference: reference,
-            });
-
-            voucher = voucherData.code;
-            updatePaymentStatus(reference, "successful", voucher);
-            console.log(`🎫 Issued Firestore voucher: ${voucher} for amount: ${amount}`);
-          } else {
-            console.warn("No available vouchers in Firestore for amount:", amount);
-            updatePaymentStatus(reference, "successful");
-          }
+          console.warn("No available vouchers in Firestore for amount:", amount);
+          updatePaymentStatus(reference, "successful");
         }
       }
       

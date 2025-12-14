@@ -11,7 +11,7 @@ import { db } from "./lib/firebase.js"; // relative path
 
 export default function Home() {
   const [phone, setPhone] = useState("");
-  const [amount, setAmount] = useState(1000);
+  const [amount, setAmount] = useState(500);
   const [loading, setLoading] = useState(false);
   const [voucher, setVoucher] = useState(null);
   const [smsSent, setSmsSent] = useState(false);
@@ -537,18 +537,62 @@ export default function Home() {
                 flexDirection: "column", 
                 gap: "0.75rem" 
               }}>
-                {/* Daily 12hrs - 1000 */}
-                <div style={{ 
+                {/* 4hrs - 500 */}
+                <div style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  padding: "1rem", 
+                  padding: "1rem",
                   background: "linear-gradient(135deg, #D93F87 0%, #44328D 100%)",
                   borderRadius: "8px",
                   width: "100%"
                 }}>
                   <div style={{ color: "white", textAlign: "left" }}>
-                    <div style={{ fontSize: "0.875rem", fontWeight: "500" }}>DAILY 12HRS</div>
+                    <div style={{ fontSize: "0.875rem", fontWeight: "500" }}>4HRS</div>
+                    <div style={{ fontSize: "1rem", fontWeight: "600", marginTop: "0.25rem" }}>UGX 500</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (!phone.trim()) {
+                        setError("Please enter a phone number");
+                        return;
+                      }
+                      if (!validatePhoneNumber(phone)) {
+                        setError("Please enter a valid Ugandan phone number");
+                        return;
+                      }
+                      setAmount(500);
+                      handlePayment();
+                    }}
+                    disabled={loading || (paymentReference && !voucher)}
+                    style={{ 
+                      padding: "0.625rem 1.5rem",
+                      backgroundColor: "rgba(255, 255, 255, 0.2)",
+                      color: "white",
+                      border: "2px solid white",
+                      borderRadius: "6px",
+                      fontSize: "0.875rem",
+                      fontWeight: "700",
+                      cursor: (loading || (paymentReference && !voucher)) ? "not-allowed" : "pointer",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    BUY
+                  </button>
+                </div>
+
+                {/* 24hrs - 1000 */}
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "1rem",
+                  background: "linear-gradient(135deg, #44328D 0%, #7652AF 100%)",
+                  borderRadius: "8px",
+                  width: "100%"
+                }}>
+                  <div style={{ color: "white", textAlign: "left" }}>
+                    <div style={{ fontSize: "0.875rem", fontWeight: "500" }}>24HRS</div>
                     <div style={{ fontSize: "1rem", fontWeight: "600", marginTop: "0.25rem" }}>UGX 1,000</div>
                   </div>
                   <button
@@ -581,19 +625,19 @@ export default function Home() {
                   </button>
                 </div>
 
-                {/* Daily 24hrs - 1500 */}
-                <div style={{ 
+                {/* 3days - 2500 */}
+                <div style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  padding: "1rem", 
-                  background: "linear-gradient(135deg, #44328D 0%, #7652AF 100%)",
+                  padding: "1rem",
+                  background: "linear-gradient(135deg, #7652AF 0%, #352154 100%)",
                   borderRadius: "8px",
                   width: "100%"
                 }}>
                   <div style={{ color: "white", textAlign: "left" }}>
-                    <div style={{ fontSize: "0.875rem", fontWeight: "500" }}>DAILY 24HRS</div>
-                    <div style={{ fontSize: "1rem", fontWeight: "600", marginTop: "0.25rem" }}>UGX 1,500</div>
+                    <div style={{ fontSize: "0.875rem", fontWeight: "500" }}>3DAYS</div>
+                    <div style={{ fontSize: "1rem", fontWeight: "600", marginTop: "0.25rem" }}>UGX 2,500</div>
                   </div>
                   <button
                     onClick={() => {
@@ -605,7 +649,51 @@ export default function Home() {
                         setError("Please enter a valid Ugandan phone number");
                         return;
                       }
-                      setAmount(1500);
+                      setAmount(2500);
+                      handlePayment();
+                    }}
+                    disabled={loading || (paymentReference && !voucher)}
+                    style={{
+                      padding: "0.625rem 1.5rem",
+                      backgroundColor: "rgba(255, 255, 255, 0.2)",
+                      color: "white",
+                      border: "2px solid white",
+                      borderRadius: "6px",
+                      fontSize: "0.875rem",
+                      fontWeight: "700",
+                      cursor: (loading || (paymentReference && !voucher)) ? "not-allowed" : "pointer",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    BUY
+                  </button>
+                </div>
+
+                {/* Weekly - 5000 */}
+                <div style={{ 
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "1rem", 
+                  background: "linear-gradient(135deg, #352154 0%, #D93F87 100%)",
+                  borderRadius: "8px",
+                  width: "100%"
+                }}>
+                  <div style={{ color: "white", textAlign: "left" }}>
+                    <div style={{ fontSize: "0.875rem", fontWeight: "500" }}>WEEKLY</div>
+                    <div style={{ fontSize: "1rem", fontWeight: "600", marginTop: "0.25rem" }}>UGX 5,000</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (!phone.trim()) {
+                        setError("Please enter a phone number");
+                        return;
+                      }
+                      if (!validatePhoneNumber(phone)) {
+                        setError("Please enter a valid Ugandan phone number");
+                        return;
+                      }
+                      setAmount(5000);
                       handlePayment();
                     }}
                     disabled={loading || (paymentReference && !voucher)}
@@ -625,19 +713,19 @@ export default function Home() {
                   </button>
                 </div>
 
-                {/* Weekly - 7000 */}
-                <div style={{ 
+                {/* Monthly - 20000 */}
+                <div style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  padding: "1rem", 
-                  background: "linear-gradient(135deg, #352154 0%, #D93F87 100%)",
+                  padding: "1rem",
+                  background: "linear-gradient(135deg, #D93F87 0%, #352154 100%)",
                   borderRadius: "8px",
                   width: "100%"
                 }}>
                   <div style={{ color: "white", textAlign: "left" }}>
-                    <div style={{ fontSize: "0.875rem", fontWeight: "500" }}>WEEKLY</div>
-                    <div style={{ fontSize: "1rem", fontWeight: "600", marginTop: "0.25rem" }}>UGX 7,000</div>
+                    <div style={{ fontSize: "0.875rem", fontWeight: "500" }}>MONTHLY</div>
+                    <div style={{ fontSize: "1rem", fontWeight: "600", marginTop: "0.25rem" }}>UGX 20,000</div>
                   </div>
                   <button
                     onClick={() => {
@@ -649,11 +737,11 @@ export default function Home() {
                         setError("Please enter a valid Ugandan phone number");
                         return;
                       }
-                      setAmount(7000);
+                      setAmount(20000);
                       handlePayment();
                     }}
                     disabled={loading || (paymentReference && !voucher)}
-                    style={{ 
+                    style={{
                       padding: "0.625rem 1.5rem",
                       backgroundColor: "rgba(255, 255, 255, 0.2)",
                       color: "white",

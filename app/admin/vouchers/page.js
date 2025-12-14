@@ -206,9 +206,13 @@ export default function VouchersAdminPage() {
             <form onSubmit={handleAddSingle} className="form-grid">
               <input placeholder="Code" value={code} onChange={e => setCode(e.target.value)} />
               <select value={amount} onChange={e => setAmount(Number(e.target.value))}>
-                <option value={1000}>UGX 1,000</option>
-                <option value={1500}>UGX 1,500</option>
-                <option value={7000}>UGX 7,000</option>
+                <option value={500}>UGX 500 (4hrs)</option>
+                <option value={1000}>UGX 1,000 (24hrs)</option>
+                <option value={1500}>UGX 1,500 (Legacy)</option>
+                <option value={2500}>UGX 2,500 (3days)</option>
+                <option value={5000}>UGX 5,000 (Weekly)</option>
+                <option value={7000}>UGX 7,000 (Legacy)</option>
+                <option value={20000}>UGX 20,000 (Monthly)</option>
               </select>
               <button type="submit" className="btn" disabled={loading}>Add</button>
             </form>
@@ -220,9 +224,13 @@ export default function VouchersAdminPage() {
               <div className="toolbar-right">
                 <select value={filterAmount} onChange={e => setFilterAmount(Number(e.target.value))}>
                   <option value={0}>All amounts</option>
-                  <option value={1000}>UGX 1,000</option>
-                  <option value={1500}>UGX 1,500</option>
-                  <option value={7000}>UGX 7,000</option>
+                  <option value={500}>UGX 500 (4hrs)</option>
+                  <option value={1000}>UGX 1,000 (24hrs)</option>
+                  <option value={1500}>UGX 1,500 (Legacy)</option>
+                  <option value={2500}>UGX 2,500 (3days)</option>
+                  <option value={5000}>UGX 5,000 (Weekly)</option>
+                  <option value={7000}>UGX 7,000 (Legacy)</option>
+                  <option value={20000}>UGX 20,000 (Monthly)</option>
                 </select>
                 <label className="checkbox">
                   <input type="checkbox" checked={onlyUnused} onChange={e => setOnlyUnused(e.target.checked)} /> Only unused
@@ -276,9 +284,13 @@ export default function VouchersAdminPage() {
                 <div className="side">
                   <label className="lbl">Amount</label>
                   <select value={amount} onChange={e => setAmount(Number(e.target.value))}>
-                    <option value={1000}>UGX 1,000</option>
-                    <option value={1500}>UGX 1,500</option>
-                    <option value={7000}>UGX 7,000</option>
+                    <option value={500}>UGX 500 (4hrs)</option>
+                    <option value={1000}>UGX 1,000 (24hrs)</option>
+                    <option value={1500}>UGX 1,500 (Legacy)</option>
+                    <option value={2500}>UGX 2,500 (3days)</option>
+                    <option value={5000}>UGX 5,000 (Weekly)</option>
+                    <option value={7000}>UGX 7,000 (Legacy)</option>
+                    <option value={20000}>UGX 20,000 (Monthly)</option>
                   </select>
                   <button type="submit" className="btn" disabled={loading} style={{ marginTop: '.5rem' }}>Add All</button>
                 </div>

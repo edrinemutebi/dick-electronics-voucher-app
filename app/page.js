@@ -472,7 +472,7 @@ export default function Home() {
               fontWeight: "bold",
               color: "#333"
             }}>
-              BUY VOUCHER USING MOBILE MONEY
+              BUY VOUCHER USING MOBILE MONEY-A
             </h1>
           </div>
 

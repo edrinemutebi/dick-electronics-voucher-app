@@ -36,18 +36,42 @@ export default function Home() {
 
   // Auto-send SMS with voucher code once available (only once per purchase)
   useEffect(() => {
-    if (!voucher || !phone) return;
-    if (smsLockRef.current) return; // prevent duplicate sends due to re-renders/StrictMode
+    if (!voucher || !phone) {
+      console.log("📱 SMS: Missing voucher or phone", { voucher: !!voucher, phone });
+      return;
+    }
+    if (smsLockRef.current) {
+      console.log("📱 SMS: Already sent (locked)");
+      return; // prevent duplicate sends due to re-renders/StrictMode
+    }
     smsLockRef.current = true;
+    console.log("📱 SMS: Starting SMS send process");
+
     (async () => {
       try {
         const number = formatPhoneNumber(phone);
         const message = `Your WiFi voucher code is: ${voucher}`;
-        await fetch("/api/send-sms", {
+
+        console.log("📱 SMS: Sending to", { number, messageLength: message.length });
+
+        const response = await fetch("/api/send-sms", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ number, message }),
         });
+
+        const result = await response.json();
+        console.log("📱 SMS: API Response", result);
+
+        if (!response.ok || !result.success) {
+          console.error("❌ SMS: Failed to send", result);
+          setError("Failed to send SMS with voucher code. Please contact support.");
+        } else {
+          console.log("✅ SMS: Sent successfully");
+        }
+      } catch (err) {
+        console.error("❌ SMS: Error sending SMS", err);
+        setError("Failed to send SMS with voucher code. Please contact support.");
       } finally {
         setSmsSent(true);
       }

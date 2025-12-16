@@ -1,12 +1,6 @@
 import { updatePaymentStatus, getPayment } from "../../../lib/storage.js";
-
-// Voucher generation function
-function generateVoucher(amount) {
-  const prefixMap = { 1000: "V1000", 1500: "V1500", 7000: "V7000" };
-  const prefix = prefixMap[amount] || "VXXXX";
-  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `${prefix}-${rand}`;
-}
+import { db } from "../../../lib/firebase.js";
+import { collection, query, where, limit, getDocs, updateDoc, doc } from "firebase/firestore";
 
 export async function POST(request) {
   try {

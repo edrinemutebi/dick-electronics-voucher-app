@@ -1,12 +1,6 @@
 import { updatePaymentStatus, getPayment } from "../../../lib/storage.js";
-
-// Voucher generation function
-function generateVoucher(amount) {
-  const prefixMap = { 1000: "V1000", 1500: "V1500", 7000: "V7000" };
-  const prefix = prefixMap[amount] || "VXXXX";
-  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `${prefix}-${rand}`;
-}
+import { db } from "../../../lib/firebase.js";
+import { collection, query, where, limit, getDocs, updateDoc, doc } from "firebase/firestore";
 
 export async function POST(request) {
   try {
@@ -40,15 +34,42 @@ export async function POST(request) {
     // Handle successful payment
     if (eventType === "collection.completed" || transactionStatus === "completed") {
       console.log(`Payment SUCCESS for reference: ${reference}`);
-      
-      // Generate voucher for successful payment
-      const voucher = generateVoucher(payment.amount);
-      console.log(`Generated voucher: ${voucher} for amount: ${payment.amount}`);
-      
-      // Update payment status with voucher
+
+      let voucher = null;
+
+      // Fetch an unused voucher from Firestore that matches the payment amount
+      if (payment.amount) {
+        const vouchersRef = collection(db, "vouchers");
+        const q = query(
+          vouchersRef,
+          where("amount", "==", payment.amount),
+          where("used", "==", false),
+          limit(1)
+        );
+        const snapshot = await getDocs(q);
+
+        if (!snapshot.empty) {
+          const voucherDoc = snapshot.docs[0];
+          const voucherData = voucherDoc.data();
+
+          // Mark voucher as used
+          await updateDoc(doc(db, "vouchers", voucherDoc.id), {
+            used: true,
+            assignedTo: payment.phone || "",
+            assignedAt: new Date(),
+          });
+
+          voucher = voucherData.code;
+          console.log(`🎫 Issued Firestore voucher: ${voucher} for amount: ${payment.amount}`);
+        } else {
+          console.warn(`⚠️ No available vouchers in Firestore for amount: ${payment.amount}`);
+        }
+      }
+
+      // Update payment status with voucher (or without if none available)
       updatePaymentStatus(reference, "successful", voucher);
-      
-      console.log(`Voucher ${voucher} stored for reference ${reference}`);
+
+      console.log(`Payment completed for reference ${reference}. Voucher: ${voucher || 'None available'}`);
     }
 
     // Always return HTTP 200 to acknowledge receipt

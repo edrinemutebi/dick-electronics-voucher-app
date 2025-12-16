@@ -12,6 +12,7 @@ import { db } from "./lib/firebase.js"; // relative path
 export default function Home() {
   const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState(500);
+  const [currentPaymentAmount, setCurrentPaymentAmount] = useState(null); // Store the amount being paid
   const [loading, setLoading] = useState(false);
   const [voucher, setVoucher] = useState(null);
   const [smsSent, setSmsSent] = useState(false);
@@ -145,7 +146,7 @@ export default function Home() {
           try {
             await addDoc(collection(db, "transactions"), {
               phone,
-              amount,
+              amount: currentPaymentAmount || amount,
               voucher: data.data.voucher,
               status: "successful",
               reference,
@@ -158,11 +159,14 @@ export default function Home() {
           return true;
         }
 
-        // Otherwise fetch from vouchers inventory
+        // Otherwise fetch from vouchers inventory using stored payment amount
+        const voucherAmount = currentPaymentAmount || amount; // Use stored payment amount or fallback to state
+        console.log("🎫 Fetching voucher for amount:", voucherAmount);
+
         const voucherRes = await fetch("/api/get-voucher", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount, phone }),
+          body: JSON.stringify({ amount: voucherAmount, phone }),
         });
 
         const voucherData = await voucherRes.json();
@@ -176,7 +180,7 @@ export default function Home() {
           try {
             await addDoc(collection(db, "transactions"), {
               phone,
-              amount,
+              amount: voucherAmount,
               voucher: voucherData.voucher,
               status: "successful",
               reference,
@@ -203,7 +207,7 @@ export default function Home() {
         try {
           await addDoc(collection(db, "transactions"), {
             phone,
-            amount,
+            amount: currentPaymentAmount || amount,
             status: "failed",
             reference,
             createdAt: new Date(),
@@ -350,6 +354,7 @@ export default function Home() {
     }
     setVoucher(null);
     setSmsSent(false);
+    setCurrentPaymentAmount(null); // Clear stored payment amount
     smsLockRef.current = false;
     voucherRef.current = null;
 
@@ -370,6 +375,9 @@ export default function Home() {
       setError("Please select a valid voucher amount");
       return;
     }
+
+    // Store the payment amount for voucher fetching
+    setCurrentPaymentAmount(amountToUse);
 
     setLoading(true);
 

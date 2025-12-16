@@ -210,9 +210,9 @@ export default function VouchersAdminPage() {
                 <option value={1000}>UGX 1,000 (24hrs)</option>
                 <option value={1500}>UGX 1,500 (Legacy)</option>
                 <option value={2500}>UGX 2,500 (3days)</option>
-                <option value={5000}>UGX 5,000 (Weekly)</option>
+                {/* <option value={5000}>UGX 5,000 (Weekly)</option> */}
                 <option value={7000}>UGX 7,000 (Legacy)</option>
-                <option value={20000}>UGX 20,000 (Monthly)</option>
+                {/* <option value={20000}>UGX 20,000 (Monthly)</option> */}
               </select>
               <button type="submit" className="btn" disabled={loading}>Add</button>
             </form>
@@ -228,9 +228,9 @@ export default function VouchersAdminPage() {
                   <option value={1000}>UGX 1,000 (24hrs)</option>
                   <option value={1500}>UGX 1,500 (Legacy)</option>
                   <option value={2500}>UGX 2,500 (3days)</option>
-                  <option value={5000}>UGX 5,000 (Weekly)</option>
+                  {/* <option value={5000}>UGX 5,000 (Weekly)</option> */}
                   <option value={7000}>UGX 7,000 (Legacy)</option>
-                  <option value={20000}>UGX 20,000 (Monthly)</option>
+                  {/* <option value={20000}>UGX 20,000 (Monthly)</option> */}
                 </select>
                 <label className="checkbox">
                   <input type="checkbox" checked={onlyUnused} onChange={e => setOnlyUnused(e.target.checked)} /> Only unused
@@ -288,9 +288,9 @@ export default function VouchersAdminPage() {
                     <option value={1000}>UGX 1,000 (24hrs)</option>
                     <option value={1500}>UGX 1,500 (Legacy)</option>
                     <option value={2500}>UGX 2,500 (3days)</option>
-                    <option value={5000}>UGX 5,000 (Weekly)</option>
+                    {/* <option value={5000}>UGX 5,000 (Weekly)</option> */}
                     <option value={7000}>UGX 7,000 (Legacy)</option>
-                    <option value={20000}>UGX 20,000 (Monthly)</option>
+                    {/* <option value={20000}>UGX 20,000 (Monthly)</option> */}
                   </select>
                   <button type="submit" className="btn" disabled={loading} style={{ marginTop: '.5rem' }}>Add All</button>
                 </div>

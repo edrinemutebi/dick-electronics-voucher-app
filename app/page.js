@@ -693,12 +693,12 @@ export default function Home() {
                   </button>
                 </div>
 
-                {/* Weekly - 5000 */}
-                <div style={{ 
+                {/* Weekly - 5000 - COMMENTED OUT TEMPORARILY */}
+                {/* <div style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  padding: "1rem", 
+                  padding: "1rem",
                   background: "linear-gradient(135deg, #352154 0%, #D93F87 100%)",
                   borderRadius: "8px",
                   width: "100%"
@@ -721,7 +721,7 @@ export default function Home() {
                       handlePayment();
                     }}
                     disabled={loading || (paymentReference && !voucher)}
-                    style={{ 
+                    style={{
                       padding: "0.625rem 1.5rem",
                       backgroundColor: "rgba(255, 255, 255, 0.2)",
                       color: "white",
@@ -735,10 +735,10 @@ export default function Home() {
                   >
                     BUY
                   </button>
-                </div>
+                </div> */}
 
-                {/* Monthly - 20000 */}
-                <div style={{
+                {/* Monthly - 20000 - COMMENTED OUT TEMPORARILY */}
+                {/* <div style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
@@ -779,7 +779,7 @@ export default function Home() {
                   >
                     BUY
                   </button>
-                </div>
+                </div> */}
               </div>
             </div>
 

@@ -373,6 +373,8 @@ export default function Home() {
 
     try {
       const formattedPhone = formatPhoneNumber(phone);
+      console.log("💳 Initiating payment with:", { phone: formattedPhone, amount, amountType: typeof amount });
+
       const res = await fetch("/api/pay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

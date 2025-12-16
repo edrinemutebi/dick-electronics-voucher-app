@@ -545,7 +545,13 @@ export async function POST(request) {
       description: `Voucher payment ${amount}`,
     });
 
-    console.log("Calling Marz Pay API once...");
+    console.log("🔥 Calling Marz Pay API with details:");
+    console.log("   URL:", MARZ_API_URL);
+    console.log("   Phone:", formattedPhone);
+    console.log("   Amount:", amount, "(type:", typeof amount, ")");
+    console.log("   Reference:", reference);
+    console.log("   FormData:", Object.fromEntries(formData));
+
     const response = await axios.post(MARZ_API_URL, formData, {
       headers: {
         Authorization: `Basic ${AUTH}`,
@@ -553,14 +559,23 @@ export async function POST(request) {
       },
     });
 
-    console.log("Marz response:", response.data);
+    console.log("🔥 Marz API Response:");
+    console.log("   Status:", response.status);
+    console.log("   Full Response:", JSON.stringify(response.data, null, 2));
 
     // ✅ Store pending payment for webhook follow-up
     const transactionId = response.data.data?.transaction?.uuid;
     storePendingPayment(reference, formattedPhone, amount, transactionId);
 
     const status = response.data.data?.transaction?.status;
+    const actualAmount = response.data.data?.transaction?.amount;
     console.log("Transaction status:", status);
+    console.log("Requested amount:", amount);
+    console.log("Actual amount from Marz:", actualAmount);
+
+    if (actualAmount && parseInt(actualAmount) !== parseInt(amount)) {
+      console.warn("⚠️ AMOUNT MISMATCH! Requested:", amount, "Marz returned:", actualAmount);
+    }
 
     // ✅ Always return reference; voucher will be issued after confirmation via polling/webhooks
     return Response.json({
@@ -570,6 +585,8 @@ export async function POST(request) {
         paymentResponse: response.data,
         reference,
         transactionUuid: transactionId, // ✅ ADDED
+        requestedAmount: amount,
+        actualAmount: actualAmount,
       },
     });
   } catch (error) {

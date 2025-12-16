@@ -1026,7 +1026,7 @@ export default function Home() {
                 textAlign: "center",
                 maxWidth: "280px"
               }}>
-                Save this code! You can use it to purchase items at Dick Electronics.
+                Save this code! You can use it to Login to Dick Electronics WIFI
               </p>
             </div>
           )}

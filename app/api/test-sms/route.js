@@ -11,7 +11,7 @@ export async function POST(request) {
 
     console.log("🧪 Test SMS Request:", { number });
 
-    const message = `Test SMS from Dick Electronics Voucher App - ${new Date().toLocaleString()}`;
+    const message = `Test message from Dick Electronics - ${new Date().toLocaleString()}`;
 
     const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/send-sms`, {
       method: "POST",

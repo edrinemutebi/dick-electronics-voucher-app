@@ -49,8 +49,14 @@ export async function POST(request) {
     // URL encode the message (spaces become + signs)
     const encodedMessage = message.replace(/\s+/g, '+');
 
-    // Build URL exactly as per EGOSMS format
-    const smsUrl = `https://www.egosms.co/api/v1/plain/?number=${encodeURIComponent(formattedNumber)}&message=${encodedMessage}&username=${username}&password=${password}&sender=${from}&priority=0`;
+    // URL encode password (@ becomes %40)
+    const encodedPassword = password.replace('@', '%40');
+
+    // Use "Egosms" as sender (matching user's example)
+    const senderName = "Egosms";
+
+    // Build URL exactly as per user's format
+    const smsUrl = `https://www.egosms.co/api/v1/plain/?number=${encodeURIComponent(formattedNumber)}&message=${encodedMessage}&username=${username}&password=${encodedPassword}&sender=${senderName}&priority=0`;
 
     console.log("📱 SMS URL constructed (without password):", smsUrl.replace(password, "***"));
     console.log("📱 SMS Phone formatted:", formattedNumber);

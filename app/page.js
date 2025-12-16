@@ -52,7 +52,7 @@ export default function Home() {
         const formattedNumber = formatPhoneNumber(phone);
         // Add + prefix for EGOSMS API
         const number = formattedNumber.startsWith('256') ? `+${formattedNumber}` : formattedNumber;
-        const message = `Your WiFi voucher code is: ${voucher}`;
+        const message = `Your wifi code ${voucher}`;
 
         console.log("📱 SMS: Sending to", { number, messageLength: message.length });
 
@@ -491,14 +491,20 @@ export default function Home() {
             marginBottom: "2rem", 
             textAlign: "center" 
           }}>
-            <h1 style={{ 
-              margin: 0, 
-              fontSize: "1.5rem", 
+            <h1 style={{
+              margin: 0,
+              fontSize: "1.5rem",
               lineHeight: 1.3,
               fontWeight: "bold",
-              color: "#333"
+              color: "#00ff88",
+              textShadow: "0 0 10px rgba(0, 255, 136, 0.5), 0 0 20px rgba(0, 255, 136, 0.3), 0 0 30px rgba(0, 255, 136, 0.2)",
+              background: "linear-gradient(45deg, #00ff88, #39ff14)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+              filter: "brightness(1.1)"
             }}>
-              BUY VOUCHER USING MOBILE MONEY-A
+              BUY VOUCHER USING MOBILE MONEY
             </h1>
           </div>
 

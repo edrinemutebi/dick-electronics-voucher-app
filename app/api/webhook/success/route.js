@@ -37,12 +37,13 @@ export async function POST(request) {
 
       let voucher = null;
 
-      // Fetch an unused voucher from Firestore that matches the payment amount
+      // Fetch an unused voucher from Firestore that matches the stored payment amount
       if (payment.amount) {
+        console.log(`💰 Webhook success: Using stored payment amount: ${payment.amount} UGX`);
         const vouchersRef = collection(db, "vouchers");
         const q = query(
           vouchersRef,
-          where("amount", "==", payment.amount),
+          where("amount", "==", Number(payment.amount)),
           where("used", "==", false),
           limit(1)
         );

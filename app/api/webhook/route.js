@@ -100,11 +100,11 @@ export async function POST(request) {
     
     // Check if payment exists in storage
     let existingPayment = getPayment(reference);
-    console.log(`🔍 Payment lookup for reference ${reference}:`, existingPayment ? 'Found' : 'Not found');
-    
+    console.log(`🔍 Payment lookup for reference ${reference}:`, existingPayment ? `Found (amount: ${existingPayment.amount})` : 'Not found');
+
     // If payment doesn't exist, create it (for webhook-only scenarios)
     if (!existingPayment) {
-      console.log(`📝 Creating payment record for webhook-only scenario: ${reference}`);
+      console.log(`📝 Creating payment record for webhook-only scenario: ${reference} with webhook amount: ${amount}`);
       storePendingPayment(reference, phoneNumber || "+256000000000", amount || 1000, `webhook-${Date.now()}`);
       existingPayment = getPayment(reference);
     }
@@ -112,13 +112,18 @@ export async function POST(request) {
     // Use mapped status for decision making
     if (mappedStatus === "completed" || eventType === "collection.completed") {
       console.log(`✅ Payment completed for reference: ${reference}`);
-      
+
+      // CRITICAL: Use the stored payment amount, not the webhook amount
+      // Webhook amount might be wrong or different from what user actually paid
+      const paymentAmount = existingPayment?.amount || amount;
+      console.log(`💰 Using stored payment amount: ${paymentAmount} UGX (webhook amount: ${amount} UGX)`);
+
       // Fetch an unused voucher from Firestore and mark as used
-      if (amount) {
+      if (paymentAmount) {
         const vouchersRef = collection(db, "vouchers");
         const q = query(
           vouchersRef,
-          where("amount", "==", amount),
+          where("amount", "==", Number(paymentAmount)),
           where("used", "==", false),
           limit(1)
         );
@@ -128,9 +133,9 @@ export async function POST(request) {
           const voucherDoc = snapshot.docs[0];
           const voucherData = voucherDoc.data();
 
-          // Validate voucher amount matches payment amount
-          if (Number(voucherData.amount) !== Number(amount)) {
-            console.error(`🚨 CRITICAL: Webhook voucher amount mismatch! Payment: ${amount}, Voucher: ${voucherData.amount}`);
+          // Validate voucher amount matches stored payment amount
+          if (Number(voucherData.amount) !== Number(paymentAmount)) {
+            console.error(`🚨 CRITICAL: Webhook voucher amount mismatch! Stored payment: ${paymentAmount}, Voucher: ${voucherData.amount}`);
             console.warn(`⚠️ Skipping voucher assignment due to amount mismatch`);
             updatePaymentStatus(reference, "successful");
           } else {
@@ -142,10 +147,10 @@ export async function POST(request) {
 
             voucher = voucherData.code;
             updatePaymentStatus(reference, "successful", voucher);
-            console.log(`🎫 Issued Firestore voucher: ${voucher} (${voucherData.amount} UGX) for payment: ${amount} UGX`);
+            console.log(`🎫 Issued Firestore voucher: ${voucher} (${voucherData.amount} UGX) for stored payment: ${paymentAmount} UGX`);
           }
         } else {
-          console.warn(`⚠️ No available vouchers in Firestore for amount: ${amount} UGX`);
+          console.warn(`⚠️ No available vouchers in Firestore for stored amount: ${paymentAmount} UGX`);
           updatePaymentStatus(reference, "successful");
         }
       }

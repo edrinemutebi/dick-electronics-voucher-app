@@ -339,7 +339,7 @@ export default function Home() {
     }
   };
 
-  const handlePayment = async () => {
+  const handlePayment = async (paymentAmount = null) => {
     setError("");
     setMessage("");
     
@@ -364,7 +364,9 @@ export default function Home() {
       return;
     }
 
-    if (!amount || amount <= 0) {
+    const amountToUse = paymentAmount || amount;
+
+    if (!amountToUse || amountToUse <= 0) {
       setError("Please select a valid voucher amount");
       return;
     }
@@ -373,13 +375,13 @@ export default function Home() {
 
     try {
       const formattedPhone = formatPhoneNumber(phone);
-      console.log("💳 Initiating payment with:", { phone: formattedPhone, amount, amountType: typeof amount });
+      console.log("💳 Initiating payment with:", { phone: formattedPhone, amount: amountToUse, amountType: typeof amountToUse });
 
-      const amt =  1000;
+      
       const res = await fetch("/api/pay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: formattedPhone, amt }),
+        body: JSON.stringify({ phone: formattedPhone, amount: amountToUse }),
       });
 
       if (!res.ok) {
@@ -590,8 +592,9 @@ export default function Home() {
                         setError("Please enter a valid Ugandan phone number");
                         return;
                       }
-                      setAmount(500);
-                      handlePayment();
+                      const voucherAmount = 500;
+                      setAmount(voucherAmount);
+                      handlePayment(voucherAmount);
                     }}
                     disabled={loading || (paymentReference && !voucher)}
                     style={{ 
@@ -634,8 +637,9 @@ export default function Home() {
                         setError("Please enter a valid Ugandan phone number");
                         return;
                       }
-                      setAmount(1000);
-                      handlePayment();
+                      const voucherAmount = 1000;
+                      setAmount(voucherAmount);
+                      handlePayment(voucherAmount);
                     }}
                     disabled={loading || (paymentReference && !voucher)}
                     style={{ 
@@ -678,8 +682,9 @@ export default function Home() {
                         setError("Please enter a valid Ugandan phone number");
                         return;
                       }
-                      setAmount(2500);
-                      handlePayment();
+                      const voucherAmount = 2500;
+                      setAmount(voucherAmount);
+                      handlePayment(voucherAmount);
                     }}
                     disabled={loading || (paymentReference && !voucher)}
                     style={{
@@ -722,8 +727,9 @@ export default function Home() {
                         setError("Please enter a valid Ugandan phone number");
                         return;
                       }
-                      setAmount(5000);
-                      handlePayment();
+                      const voucherAmount = 5000;
+                      setAmount(voucherAmount);
+                      handlePayment(voucherAmount);
                     }}
                     disabled={loading || (paymentReference && !voucher)}
                     style={{
@@ -766,8 +772,9 @@ export default function Home() {
                         setError("Please enter a valid Ugandan phone number");
                         return;
                       }
-                      setAmount(20000);
-                      handlePayment();
+                      const voucherAmount = 20000;
+                      setAmount(voucherAmount);
+                      handlePayment(voucherAmount);
                     }}
                     disabled={loading || (paymentReference && !voucher)}
                     style={{

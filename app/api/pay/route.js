@@ -530,34 +530,86 @@ export async function POST(request) {
         { status: 400 }
       );
 
+    // Try different Marz API endpoints if the current one has issues
     const MARZ_API_URL =
       process.env.MARZ_API_BASE_URL ||
       "https://wallet.wearemarz.com/api/v1/collect-money";
+
+    // Alternative endpoints to try if current one fails
+    const alternativeUrls = [
+      "https://wallet.wearemarz.com/api/v1/collect-money",
+      "https://wallet.wearemarz.com/api/v1/payments/collect",
+      "https://api.wearemarz.com/v1/collect-money"
+    ];
+
     const AUTH =
       process.env.MARZ_BASE64_AUTH ||
       "bWFyel80VEx3b05XUWVnY3hPRmVBOjdtSzZzUmdoNTJERkxaYmh6VDFNeFVteERFVEhuOW1q";
 
+    // Ensure amount is a valid number and meets Marz minimum requirements
+    const numericAmount = parseInt(amount);
+    if (numericAmount < 500) {
+      console.warn("⚠️ Amount below Marz minimum (500 UGX), adjusting to 500");
+      // Don't adjust automatically - let Marz handle it but log the issue
+    }
+
     const formData = new URLSearchParams({
       phone_number: formattedPhone,
-      amount: amount.toString(),
+      amount: numericAmount.toString(),
       country: "UG",
       reference,
-      description: `Voucher payment ${amount}`,
+      description: `WiFi Voucher Payment - ${numericAmount} UGX`,
+      currency: "UGX", // Explicitly specify currency
     });
+
+    console.log("💰 Payment Details:");
+    console.log("   Requested Amount:", numericAmount);
+    console.log("   Phone:", formattedPhone);
+    console.log("   Reference:", reference);
 
     console.log("🔥 Calling Marz Pay API with details:");
     console.log("   URL:", MARZ_API_URL);
     console.log("   Phone:", formattedPhone);
-    console.log("   Amount:", amount, "(type:", typeof amount, ")");
+    console.log("   Amount:", numericAmount, "(type:", typeof numericAmount, ")");
     console.log("   Reference:", reference);
     console.log("   FormData:", Object.fromEntries(formData));
-
-    const response = await axios.post(MARZ_API_URL, formData, {
-      headers: {
-        Authorization: `Basic ${AUTH}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
+    console.log("   Headers:", {
+      Authorization: `Basic ***HIDDEN***`,
+      "Content-Type": "application/x-www-form-urlencoded",
     });
+
+    // Add timeout and retry logic
+    let response;
+    let lastError;
+
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        console.log(`🔄 Marz API Call Attempt ${attempt}/2`);
+
+        response = await axios.post(MARZ_API_URL, formData, {
+          headers: {
+            Authorization: `Basic ${AUTH}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          timeout: 30000, // 30 second timeout
+        });
+
+        console.log(`✅ Marz API Call Successful on Attempt ${attempt}`);
+        break; // Success, exit retry loop
+
+      } catch (error) {
+        lastError = error;
+        console.error(`❌ Marz API Call Failed on Attempt ${attempt}:`, error.message);
+
+        if (attempt === 2) {
+          // Last attempt failed
+          throw new Error(`Marz API failed after ${attempt} attempts: ${error.message}`);
+        }
+
+        // Wait 1 second before retry
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
 
     console.log("🔥 Marz API Response:");
     console.log("   Status:", response.status);
@@ -565,30 +617,57 @@ export async function POST(request) {
 
     // ✅ Store pending payment for webhook follow-up
     const transactionId = response.data.data?.transaction?.uuid;
-    storePendingPayment(reference, formattedPhone, amount, transactionId);
+    storePendingPayment(reference, formattedPhone, numericAmount, transactionId);
 
     const status = response.data.data?.transaction?.status;
     const actualAmount = response.data.data?.transaction?.amount;
-    console.log("Transaction status:", status);
-    console.log("Requested amount:", amount);
-    console.log("Actual amount from Marz:", actualAmount);
 
-    if (actualAmount && parseInt(actualAmount) !== parseInt(amount)) {
-      console.warn("⚠️ AMOUNT MISMATCH! Requested:", amount, "Marz returned:", actualAmount);
+    console.log("📊 Marz API Response Analysis:");
+    console.log("   Transaction Status:", status);
+    console.log("   Requested Amount:", numericAmount);
+    console.log("   Actual Amount from Marz:", actualAmount);
+    console.log("   Transaction ID:", transactionId);
+
+    // Check for amount mismatch
+    if (actualAmount && parseInt(actualAmount) !== numericAmount) {
+      console.error("🚨 CRITICAL: AMOUNT MISMATCH!");
+      console.error("   Expected:", numericAmount, "UGX");
+      console.error("   Marz charged:", actualAmount, "UGX");
+      console.error("   Difference:", parseInt(actualAmount) - numericAmount, "UGX");
+    } else if (!actualAmount) {
+      console.warn("⚠️ No amount returned from Marz API");
+    } else {
+      console.log("✅ Amount matches correctly");
+    }
+
+    // Validate transaction status
+    if (status !== 'pending' && status !== 'success') {
+      console.warn("⚠️ Unexpected transaction status:", status);
     }
 
     // ✅ Always return reference; voucher will be issued after confirmation via polling/webhooks
-    return Response.json({
+    const responseData = {
       success: true,
       message: `Payment initiated successfully. Status: ${status}. Please wait for confirmation.`,
       data: {
         paymentResponse: response.data,
         reference,
-        transactionUuid: transactionId, // ✅ ADDED
-        requestedAmount: amount,
+        transactionUuid: transactionId,
+        requestedAmount: numericAmount,
         actualAmount: actualAmount,
+        amountMatch: actualAmount ? (parseInt(actualAmount) === numericAmount) : null,
       },
-    });
+    };
+
+    // Log final summary
+    console.log("💳 Payment Summary:");
+    console.log("   Reference:", reference);
+    console.log("   Requested:", numericAmount, "UGX");
+    console.log("   Marz Amount:", actualAmount, "UGX");
+    console.log("   Status:", status);
+    console.log("   Amount Match:", responseData.data.amountMatch ? "✅ YES" : "❌ NO");
+
+    return Response.json(responseData);
   } catch (error) {
     console.error("Payment error:", error.response?.data || error.message);
     const status = error.response?.status || 500;

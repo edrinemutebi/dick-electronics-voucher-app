@@ -11,17 +11,42 @@ export async function POST(request) {
   try {
     const { amount, phone } = await request.json();
 
-    // 1️⃣ Get an unused voucher matching amount
+    console.log(`🔍 get-voucher: Looking for ${amount} UGX voucher for phone ${phone}`);
+
+    // 1️⃣ Get an unused voucher matching EXACT amount
     const vouchersRef = collection(db, "vouchers");
-    const q = query(vouchersRef, where("amount", "==", amount), where("used", "==", false), limit(1));
+    const q = query(
+      vouchersRef,
+      where("amount", "==", Number(amount)), // Ensure numeric comparison
+      where("used", "==", false),
+      limit(1)
+    );
     const snapshot = await getDocs(q);
 
+    console.log(`🔍 get-voucher: Found ${snapshot.size} vouchers for amount ${amount}`);
+
     if (snapshot.empty) {
-      return new Response(JSON.stringify({ success: false, message: "No vouchers available for this amount" }), { status: 404 });
+      console.warn(`⚠️ get-voucher: No vouchers available for amount ${amount} UGX`);
+      return new Response(JSON.stringify({
+        success: false,
+        message: `No vouchers available for ${amount} UGX. Please contact support.`,
+        requestedAmount: amount
+      }), { status: 404 });
     }
 
     const voucherDoc = snapshot.docs[0];
     const voucherData = voucherDoc.data();
+
+    // Double-check the voucher amount matches
+    if (Number(voucherData.amount) !== Number(amount)) {
+      console.error(`🚨 CRITICAL: Voucher amount mismatch! Requested: ${amount}, Voucher: ${voucherData.amount}`);
+      return new Response(JSON.stringify({
+        success: false,
+        message: "Voucher amount mismatch. Please contact support."
+      }), { status: 500 });
+    }
+
+    console.log(`✅ get-voucher: Assigning voucher ${voucherData.code} (${voucherData.amount} UGX) to ${phone}`);
 
     // 2️⃣ Mark it as used and assign to user
     await updateDoc(doc(db, "vouchers", voucherDoc.id), {

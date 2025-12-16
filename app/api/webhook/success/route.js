@@ -52,17 +52,23 @@ export async function POST(request) {
           const voucherDoc = snapshot.docs[0];
           const voucherData = voucherDoc.data();
 
-          // Mark voucher as used
-          await updateDoc(doc(db, "vouchers", voucherDoc.id), {
-            used: true,
-            assignedTo: payment.phone || "",
-            assignedAt: new Date(),
-          });
+          // Validate voucher amount matches payment amount
+          if (Number(voucherData.amount) !== Number(payment.amount)) {
+            console.error(`🚨 CRITICAL: Webhook voucher amount mismatch! Payment: ${payment.amount}, Voucher: ${voucherData.amount}`);
+            console.warn(`⚠️ Skipping voucher assignment due to amount mismatch`);
+          } else {
+            // Mark voucher as used
+            await updateDoc(doc(db, "vouchers", voucherDoc.id), {
+              used: true,
+              assignedTo: payment.phone || "",
+              assignedAt: new Date(),
+            });
 
-          voucher = voucherData.code;
-          console.log(`🎫 Issued Firestore voucher: ${voucher} for amount: ${payment.amount}`);
+            voucher = voucherData.code;
+            console.log(`🎫 Issued Firestore voucher: ${voucher} (${voucherData.amount} UGX) for payment: ${payment.amount} UGX`);
+          }
         } else {
-          console.warn(`⚠️ No available vouchers in Firestore for amount: ${payment.amount}`);
+          console.warn(`⚠️ No available vouchers in Firestore for amount: ${payment.amount} UGX`);
         }
       }
 

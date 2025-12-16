@@ -88,27 +88,37 @@ export async function POST(request) {
                 const voucherDoc = snapshot.docs[0];
                 const voucherData = voucherDoc.data();
 
-                await updateDoc(doc(db, "vouchers", voucherDoc.id), {
-                  used: true,
-                  assignedTo: payment.phone,
-                  assignedAt: new Date(),
-                });
+                // Validate voucher amount matches payment amount
+                if (Number(voucherData.amount) !== Number(payment.amount)) {
+                  console.error(`🚨 CRITICAL: Check-payment voucher amount mismatch! Payment: ${payment.amount}, Voucher: ${voucherData.amount}`);
+                  console.warn(`⚠️ Skipping voucher assignment due to amount mismatch`);
+                  // Update status successful without voucher
+                  await updatePaymentStatus(reference, "successful");
+                } else {
+                  await updateDoc(doc(db, "vouchers", voucherDoc.id), {
+                    used: true,
+                    assignedTo: payment.phone,
+                    assignedAt: new Date(),
+                  });
 
-                // Update payment status with voucher code
-                await updatePaymentStatus(reference, "successful", voucherData.code);
+                  // Update payment status with voucher code
+                  await updatePaymentStatus(reference, "successful", voucherData.code);
 
-                return Response.json({
-                  success: true,
-                  data: {
-                    status: "successful",
-                    voucher: voucherData.code,
-                    amount: payment.amount,
-                    phone: payment.phone,
-                    completedAt: new Date().toISOString(),
-                  },
-                });
+                  console.log(`🎫 Check-payment issued voucher: ${voucherData.code} (${voucherData.amount} UGX) for payment: ${payment.amount} UGX`);
+
+                  return Response.json({
+                    success: true,
+                    data: {
+                      status: "successful",
+                      voucher: voucherData.code,
+                      amount: payment.amount,
+                      phone: payment.phone,
+                      completedAt: new Date().toISOString(),
+                    },
+                  });
+                }
               } else {
-                console.warn("No available vouchers in Firestore for amount:", payment.amount);
+                console.warn(`⚠️ No available vouchers in Firestore for amount: ${payment.amount} UGX`);
                 // Update status successful without voucher; client may fallback to /api/get-voucher
                 await updatePaymentStatus(reference, "successful");
                 return Response.json({

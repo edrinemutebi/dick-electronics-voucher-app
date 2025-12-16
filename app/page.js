@@ -193,8 +193,8 @@ export default function Home() {
 
           return true; // Payment completed
         } else {
-          console.warn("⚠️ Voucher not available after successful payment.");
-          setError("Payment done, but no voucher available right now. Please contact support.");
+          console.error(`❌ Voucher assignment failed: ${voucherData.message || 'Unknown error'}`);
+          setError(`Payment completed for ${voucherAmount} UGX, but no voucher available for this amount. Please contact support with reference: ${reference}`);
           return true;
         }
 

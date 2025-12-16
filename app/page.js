@@ -49,7 +49,9 @@ export default function Home() {
 
     (async () => {
       try {
-        const number = formatPhoneNumber(phone);
+        const formattedNumber = formatPhoneNumber(phone);
+        // Add + prefix for EGOSMS API
+        const number = formattedNumber.startsWith('256') ? `+${formattedNumber}` : formattedNumber;
         const message = `Your WiFi voucher code is: ${voucher}`;
 
         console.log("📱 SMS: Sending to", { number, messageLength: message.length });

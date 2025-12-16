@@ -43,18 +43,21 @@ export async function POST(request) {
       );
     }
 
-    const url = new URL("https://www.egosms.co/api/v1/plain/");
-    url.searchParams.set("number", number);
-    url.searchParams.set("message", message);
-    url.searchParams.set("username", username);
-    url.searchParams.set("password", password);
-    url.searchParams.set("sender", from);
-    url.searchParams.set("priority", "0");
+    // Format phone number with + prefix for EGOSMS
+    const formattedNumber = number.startsWith('+') ? number : `+${number}`;
 
-    console.log("📱 SMS URL constructed (without password):", url.toString().replace(password, "***"));
+    // URL encode the message (spaces become + signs)
+    const encodedMessage = message.replace(/\s+/g, '+');
+
+    // Build URL exactly as per EGOSMS format
+    const smsUrl = `https://www.egosms.co/api/v1/plain/?number=${encodeURIComponent(formattedNumber)}&message=${encodedMessage}&username=${username}&password=${password}&sender=${from}&priority=0`;
+
+    console.log("📱 SMS URL constructed (without password):", smsUrl.replace(password, "***"));
+    console.log("📱 SMS Phone formatted:", formattedNumber);
+    console.log("📱 SMS Message encoded:", encodedMessage);
 
     try {
-      const res = await fetch(url.toString(), {
+      const res = await fetch(smsUrl, {
         timeout: 30000 // 30 second timeout
       });
       const text = await res.text();

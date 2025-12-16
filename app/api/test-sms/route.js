@@ -16,7 +16,7 @@ export async function POST(request) {
     const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/send-sms`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ number, message }),
+      body: JSON.stringify({ number: number.startsWith('+') ? number : `+${number}`, message }),
     });
 
     const result = await response.json();

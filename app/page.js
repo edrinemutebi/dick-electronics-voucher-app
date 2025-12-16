@@ -496,13 +496,7 @@ export default function Home() {
               fontSize: "1.5rem",
               lineHeight: 1.3,
               fontWeight: "bold",
-              color: "#00ff88",
-              textShadow: "0 0 10px rgba(0, 255, 136, 0.5), 0 0 20px rgba(0, 255, 136, 0.3), 0 0 30px rgba(0, 255, 136, 0.2)",
-              background: "linear-gradient(45deg, #00ff88, #39ff14)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-              filter: "brightness(1.1)"
+              color: "#333"
             }}>
               BUY VOUCHER USING MOBILE MONEY
             </h1>
